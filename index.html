@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malloc VR MCP</title>
+    <link rel="icon" type="image/x-icon" href="assets/images/malloc_icon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="assets/images/malloc_icon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cursor-size: 8px;
+            --cursor-outline-size: 28px;
+        }
+        html, body { cursor: none; }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Figtree', sans-serif;
+            background-color: #3d4753;
+            overflow-x: hidden;
+            opacity: 0;
+            transition: opacity 1s ease-in-out, background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        body.video-background {
+            background-color: #1C2835;
+        }
+        body.loaded { opacity: 1; }
+
+        #cursor-dot { position: fixed; top: 0; left: 0; width: var(--cursor-size); height: var(--cursor-size); background-color: #f8f9f9; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; transition: width 0.3s ease, height 0.3s ease, opacity 0.3s ease; }
+        #cursor-outline { position: fixed; top: 0; left: 0; width: var(--cursor-outline-size); height: var(--cursor-outline-size); border: 1px solid rgba(248, 249, 249, 0.5); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 9999; transition: width 0.3s ease, height 0.3s ease, background-color 0.3s ease; }
+        body.cursor-hover #cursor-dot { opacity: 0; }
+        body.cursor-hover #cursor-outline { width: 40px; height: 40px; background-color: rgba(248, 249, 249, 0.1); border-color: transparent; }
+
+        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #3d4753; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s ease-in-out; }
+        
+        #webgl-canvas { position: fixed; top: 0; left: 0; outline: none; z-index: -1; }
+        
+        .content-section { position: relative; z-index: 1; }
+
+        .panel { background-color: rgba(61, 71, 83, 0.7); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(248, 249, 249, 0.3); box-shadow: 0 16px 48px 0 rgba(61, 71, 83, 0.2); }
+        
+        .header-panel { background-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid transparent; box-shadow: none; transition: background-color 0.3s ease, border-color 0.3s ease; }
+        .header-panel.scrolled { background-color: rgba(61, 71, 83, 0.7); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-bottom-color: transparent; }
+
+        .meta-blue { color: #f8f9f9; }
+        .bg-meta-blue { background-color: #f8f9f9; }
+        
+        .hero-glow { animation: text-shimmer 5s ease-in-out infinite alternate; background: linear-gradient(90deg, #f8f9f9, #3d4753, #f8f9f9); background-size: 200% 200%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        @keyframes text-shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+        
+        .btn-glow:hover { box-shadow: 0 0 25px 0 rgba(248, 249, 249, 0.5); }
+        
+        .scroll-reveal { opacity: 0; transform: translateY(40px); transition: opacity 1s cubic-bezier(0.19, 1, 0.22, 1), transform 1s cubic-bezier(0.19, 1, 0.22, 1); }
+        .scroll-reveal.is-visible { opacity: 1; transform: translateY(0); }
+        
+        .timeline { position: relative; }
+        .timeline::before { content: ''; position: absolute; left: 20px; top: 1rem; bottom: 1rem; width: 2px; background-color: rgba(248, 249, 249, 0.3); }
+        .timeline-item::before { content: ''; position: absolute; left: 14px; top: 1rem; width: 14px; height: 14px; border-radius: 50%; background-color: #3d4753; border: 3px solid #f8f9f9; transition: border-color 0.3s ease, transform 0.3s ease; }
+        .timeline-item:hover::before { transform: scale(1.2); }
+        .timeline-item.breakthrough::before { border-color: #f8f9f9; }
+        .timeline-item.challenge::before { border-color: #f8f9f9; }
+        
+        /* Custom Scrollbar Styling */
+        ::-webkit-scrollbar { width: 12px; }
+        ::-webkit-scrollbar-track { background: #3d4753; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb { background: #f8f9f9; border-radius: 6px; border: 2px solid #3d4753; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(248, 249, 249, 0.8); }
+        ::-webkit-scrollbar-corner { background: #3d4753; }
+        
+        /* Firefox Scrollbar */
+        html { scrollbar-width: thin; scrollbar-color: #f8f9f9 #3d4753; }
+
+        /* Loading Animations */
+        .vr-banner {
+            transform: translateX(-100%);
+            opacity: 0;
+            transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 1.2s ease-out;
+        }
+        
+        .vr-banner.loaded {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .hero-text {
+            transform: translateX(100%);
+            opacity: 0;
+            transition: transform 1.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 1.4s ease-out;
+            transition-delay: 0.3s;
+        }
+        
+        .hero-text.loaded {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .scroll-indicator {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 1s ease-out, transform 1s ease-out;
+            transition-delay: 1.8s;
+        }
+        
+        .scroll-indicator.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(61, 71, 83, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .modal-content {
+            background-color: rgba(61, 71, 83, 0.95);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(248, 249, 249, 0.3);
+            border-radius: 24px;
+            padding: 2rem;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 1rem;
+            box-shadow: 0 16px 48px 0 rgba(61, 71, 83, 0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #f8f9f9;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background-color: rgba(248, 249, 249, 0.1);
+        }
+        
+        .developer-section {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(248, 249, 249, 0.2);
+        }
+        
+        .developer-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 2px solid rgba(248, 249, 249, 0.3);
+            flex-shrink: 0;
+        }
+        
+        .developer-content {
+            flex: 1;
+        }
+        
+        @media (max-width: 640px) {
+            .developer-section {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            
+            .modal-content {
+                margin: 0.5rem;
+                padding: 1.5rem;
+            }
+        }
+        
+        /* Simple Video Sections */
+        .video-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+        }
+        
+        .video-card {
+            background: rgba(61, 71, 83, 0.7);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(248, 249, 249, 0.3);
+            border-radius: 24px;
+            padding: 2rem;
+            max-width: 900px;
+            width: 100%;
+            box-shadow: 0 16px 48px 0 rgba(61, 71, 83, 0.2);
+        }
+        
+        .video-player {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .video-player iframe {
+            pointer-events: auto;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .video-player video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .video-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+        
+        .video-thumbnail.hidden {
+            display: none;
+        }
+        
+        .video-player video.hidden {
+            display: none;
+        }
+        
+        .play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: rgba(248, 249, 249, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+        }
+        
+        .play-overlay:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            background: rgba(248, 249, 249, 1);
+        }
+        
+        .play-overlay svg {
+            width: 32px;
+            height: 32px;
+            fill: #3d4753;
+            margin-left: 4px;
+        }
+        
+        .play-overlay.hidden {
+            display: none;
+        }
+        
+        /* Custom Video Controls */
+        video::-webkit-media-controls-panel {
+            background-color: rgba(61, 71, 83, 0.9);
+            border-radius: 0 0 12px 12px;
+        }
+        video::-webkit-media-controls-play-button,
+        video::-webkit-media-controls-mute-button,
+        video::-webkit-media-controls-fullscreen-button {
+            filter: brightness(0) invert(1);
+        }
+        video::-webkit-media-controls-timeline {
+            background-color: rgba(248, 249, 249, 0.3);
+            border-radius: 2px;
+        }
+        video::-webkit-media-controls-current-time-display,
+        video::-webkit-media-controls-time-remaining-display {
+            color: #f8f9f9;
+        }
+    </style>
+</head>
+<body class="text-[#f8f9f9] antialiased">
+
+    <div id="cursor-dot"></div>
+    <div id="cursor-outline"></div>
+
+    <div id="preloader">
+        <svg class="w-16 h-16 text-meta-blue animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </div>
+
+    <canvas id="webgl-canvas"></canvas>
+
+    <div class="content-section">
+        <!-- Header -->
+        <header id="header" class="sticky top-0 z-50 header-panel">
+            <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <h1 class="text-2xl font-bold text-[#f8f9f9] tracking-tight">
+                        Malloc VR MCP
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <button id="about-btn" class="text-2xl font-bold text-[#f8f9f9] hover:text-[#f8f9f9]/80 transition-colors duration-200 tracking-tight">
+                        About
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto px-6 py-12">
+            <div class="h-[100vh]"></div> <!-- Spacer for Hero Scroll -->
+
+             <!-- Spacer for next scroll trigger -->
+             <div class="h-[100vh]"></div>
+
+            <!-- Video Journal Section -->
+            <section id="video-journal" class="scroll-reveal">
+
+
+                <!-- Episode 1: Thinking Aloud -->
+                <div class="video-section">
+                    <div class="video-card">
+                        <div class="mb-6">
+                            <h3 class="text-3xl font-bold text-[#f8f9f9] mb-3">Episode 1: Thinking Aloud</h3>
+                            <p class="text-[#f8f9f9]/80 text-lg">First thoughts and ideas on the project. Why VR? Why MCP? Why Malloc?</p>
+                        </div>
+                        <div class="video-player">
+                            <iframe 
+                                class="w-full h-full rounded-xl"
+                                src="https://www.youtube.com/embed/dCP0hLWBTyk?showinfo=0&disablekb=1&modestbranding=1&rel=0"
+                                title="Episode 1: Thinking Aloud"
+                                frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen
+                                style="aspect-ratio: 16/9; min-height: 400px;">
+                            </iframe>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Episode 2: Building Clarity -->
+                <div class="video-section">
+                    <div class="video-card">
+                        <div class="mb-6">
+                            <h3 class="text-3xl font-bold text-[#f8f9f9] mb-3">Episode 2: Building Clarity</h3>
+                            <p class="text-[#f8f9f9]/80 text-lg">Refining concepts and establishing clear development pathways.</p>
+                        </div>
+                        <div class="video-player">
+                            <iframe 
+                                class="w-full h-full rounded-xl"
+                                src="https://www.youtube.com/embed/Y9LzZIeQJUU?showinfo=0&disablekb=1&modestbranding=1&rel=0"
+                                title="Episode 2: Building Clarity"
+                                frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen
+                                style="aspect-ratio: 16/9; min-height: 400px;">
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Episode 3: My Work -->
+                <div class="video-section">
+                    <div class="video-card">
+                        <div class="mb-6">
+                            <h3 class="text-3xl font-bold text-[#f8f9f9] mb-3">Episode 3: My Work</h3>
+                            <p class="text-[#f8f9f9]/80 text-lg">A showcase of current projects, methodologies, and creative processes in action.</p>
+                        </div>
+                        <div class="video-player">
+                            <iframe 
+                                class="w-full h-full rounded-xl"
+                                src="https://www.youtube.com/embed/lbLPvFvG5cY?showinfo=0&disablekb=1&modestbranding=1&rel=0"
+                                title="Episode 3: My Work"
+                                frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen
+                                style="aspect-ratio: 16/9; min-height: 400px;">
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detour: Building a VR Sandbox -->
+                <div class="video-section">
+                    <div class="video-card" style="background: rgba(6, 41, 31, 0.7);">
+                        <div class="mb-6">
+                            <h3 class="text-3xl font-bold text-[#f8f9f9] mb-3">Detour: Building a VR Sandbox</h3>
+                            <p class="text-[#f8f9f9]/80 text-lg">A technical deep dive into creating immersive VR environments and interactive systems for educational applications.</p>
+                        </div>
+                        <div class="video-player">
+                            <iframe 
+                                class="w-full h-full rounded-xl"
+                                src="https://www.youtube.com/embed/syzjKguMew4?showinfo=0&disablekb=1&modestbranding=1&rel=0"
+                                title="Detour: Building a VR Sandbox"
+                                frameborder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen
+                                style="aspect-ratio: 16/9; min-height: 400px;">
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Episode 4: Learning Architecture -->
+                <div class="video-section">
+                    <div class="video-card">
+                        <div class="mb-6">
+                            <h3 class="text-3xl font-bold text-[#f8f9f9] mb-3">Episode 4: Learning Architecture</h3>
+                            <p class="text-[#f8f9f9]/80 text-lg">Explaining my learning design philosophy and methodology and how it fits into the Malloc VR MCP project.</p>
+                            <div class="mt-4 px-4 py-2 bg-[#f8f9f9]/20 rounded-full text-sm text-[#f8f9f9] inline-block">
+                                Coming Soon
+                </div>
+                        </div>
+                        <div class="video-player">
+                            <img 
+                                src="assets/images/thumbnails/Episode 4 The Malloc Journal - Learning Architecture.png" 
+                                alt="Episode 4 Learning Architecture - Coming Soon" 
+                                class="w-full h-full object-cover opacity-50"
+                            >
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <footer class="border-t border-[#f8f9f9]/50 mt-16">
+                <div class="container mx-auto px-6 py-8 text-center text-[#f8f9f9] text-sm">
+                    <p id="last-updated"></p>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close">&times;</button>
+            
+            <h2 class="text-3xl font-bold text-[#f8f9f9] mb-6">Malloc VR MCP</h2>
+            
+            <div class="text-[#f8f9f9]/90 space-y-4">
+                <p class="text-lg leading-relaxed">
+                    The Malloc VR MCP project is an advanced virtual reality educational platform designed to create immersive, effective learning experiences that actually improve educational outcomes. Built specifically for the Meta Quest 3, this system combines cutting-edge VR technology with proven educational theory to deliver learning experiences that engage multiple senses and learning styles.
+                </p>           
+             
+                <div>
+                    <h3 class="text-xl font-semibold text-[#f8f9f9] mb-3">The Vision:</h3>
+                    <p class="leading-relaxed">
+                        Transform education by making abstract concepts tangible, expensive equipment accessible, and complex processes understandable through immersive, precisely-controlled virtual experiences that adapt to each learner's needs and pace.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="developer-section">
+                <img 
+                    src="assets/images/sethu_nguna.jpg" 
+                    alt="Sethu Nguna" 
+                    class="developer-image"
+                >
+                <div class="developer-content">
+                    <h3 class="text-xl font-semibold text-[#f8f9f9] mb-2">Developer:</h3>
+                    <p class="text-[#f8f9f9]/90 leading-relaxed text-sm">
+                        Sethu Nguna is a Learning Experience and Instructional System Design specialist with over 10 years of experience in educational program design and digital transformation initiatives. Her interest in the Malloc VR MCP project stems from her extensive background creating innovative educational technologies, including interactive simulations like "AidCraft" for development finance training and "Capital & The Other" for economic theory education. With a Master's in Education focused on digital transformation and experience implementing constructivist learning principles, she recognizes VR's potential to revolutionize experiential learning through embodied cognition and spatial precision.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let soundManager, scene, camera, renderer, crystal, particles;
+            const mouse = new THREE.Vector2();
+
+            // --- FORCE SCROLL TO TOP ON PAGE LOAD ---
+            window.addEventListener('beforeunload', function() {
+                window.scrollTo(0, 0);
+            });
+            
+            window.addEventListener('load', function() {
+                setTimeout(function() {
+                    window.scrollTo(0, 0);
+                }, 0);
+            });
+            
+            // Override browser scroll restoration
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+            
+            // Immediate scroll to top
+            window.scrollTo(0, 0);
+
+            // --- PRELOADER & INITIALIZATION ---
+            function init() {
+                // initSound(); // Disabled sound effects
+                initWebGL();
+                initUI();
+                animate();
+                
+                document.body.classList.add('loaded');
+                const preloader = document.getElementById('preloader');
+                preloader.style.opacity = '0';
+                setTimeout(() => preloader.style.display = 'none', 500);
+                
+                // Trigger loading animations sequence
+                triggerLoadingAnimations();
+            }
+            
+            function triggerLoadingAnimations() {
+                // Start VR banner animation from left (immediate)
+                setTimeout(() => {
+                    if (window.bannerMesh) {
+                        window.bannerMesh.userData.loadAnimation = 'slideFromLeft';
+                        window.bannerMesh.userData.animationStart = Date.now();
+                    }
+                }, 100);
+                
+                // Start Learning by Design animation from right (300ms delay)
+                setTimeout(() => {
+                    if (window.heroSprite) {
+                        window.heroSprite.userData.loadAnimation = 'slideFromRight';
+                        window.heroSprite.userData.animationStart = Date.now();
+                    }
+                }, 400);
+                
+                // Start scroll text fade in (1800ms delay - after other animations)
+                setTimeout(() => {
+                    if (window.scrollSprite1) {
+                        window.scrollSprite1.userData.loadAnimation = 'fadeIn';
+                        window.scrollSprite1.userData.animationStart = Date.now();
+                    }
+                }, 1900);
+            }
+
+            // --- SOUND MANAGER ---
+            function initSound() {
+                soundManager = {
+                    isMuted: false,
+                    initialized: false,
+                    synths: {},
+                    init: async function() {
+                        if (this.initialized) return;
+                        try {
+                            // Ensure AudioContext is started after user interaction
+                            if (Tone.context.state !== 'running') {
+                                await Tone.start();
+                            }
+                            this.synths.hover = new Tone.Synth({ 
+                                oscillator: { type: "sine" }, 
+                                envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 } 
+                            }).toDestination();
+                            this.synths.click = new Tone.PluckSynth({ 
+                                attackNoise: 0.5, dampening: 4000, resonance: 0.7 
+                            }).toDestination();
+                            this.initialized = true;
+                        } catch (error) {
+                            console.warn('Audio initialization failed:', error);
+                            this.isMuted = true;
+                        }
+                    },
+                    play: async function(sound) {
+                        if (this.isMuted) return;
+                        if (!this.initialized) {
+                            await this.init();
+                        }
+                        if (!this.initialized) return; // Still failed to initialize
+                        
+                        try {
+                            if (sound === 'hover' && this.synths.hover) {
+                                this.synths.hover.triggerAttackRelease("C5", "8n");
+                            }
+                            if (sound === 'click' && this.synths.click) {
+                                this.synths.click.triggerAttackRelease("C4", "8n");
+                            }
+                        } catch (error) {
+                            console.warn('Audio playback failed:', error);
+                        }
+                    }
+                };
+            }
+
+            // --- WEBGL SCENE ---
+            function initWebGL() {
+                const canvas = document.getElementById('webgl-canvas');
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer({ 
+                    canvas, 
+                    antialias: true, 
+                    alpha: true,
+                    powerPreference: "high-performance",
+                    stencil: false,
+                    depth: true
+                });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+                // Premium rendering settings for design agency quality
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                renderer.outputEncoding = THREE.sRGBEncoding;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.2;
+                renderer.physicallyCorrectLights = true;
+
+                                // No 3D shape - focus purely on typography excellence
+                crystal = null;
+                
+                                                // Ultra-Professional Typography System - Design Agency Grade
+                const heroTextCanvas = createResponsiveHeroText();
+                const heroTexture = new THREE.CanvasTexture(heroTextCanvas);
+                heroTexture.generateMipmaps = false;
+                heroTexture.minFilter = THREE.LinearFilter;
+                heroTexture.magFilter = THREE.LinearFilter;
+                
+                const heroMaterial = new THREE.SpriteMaterial({ 
+                    map: heroTexture, 
+                    transparent: true,
+                    alphaTest: 0.001,
+                    depthTest: false,
+                    depthWrite: false
+                });
+                
+                const heroSprite = new THREE.Sprite(heroMaterial);
+                heroSprite.scale.set(12, 3, 1);
+                heroSprite.position.set(50, 0, 0); // Start off-screen to the right
+                heroSprite.renderOrder = 1000;
+                heroSprite.userData.originalPosition = { x: 0, y: 0, z: 0 };
+                heroSprite.userData.loadAnimation = null;
+                scene.add(heroSprite);
+
+                // Store global reference for loading animation
+                window.heroSprite = heroSprite;
+
+                // Create scroll indicator text below hero with icon
+                const scrollTextCanvas1 = createScrollTextWithIcon('Scroll down to discover the documented journey to build the Malloc VR MCP', 2048, 256, 36);
+                const scrollTexture1 = new THREE.CanvasTexture(scrollTextCanvas1);
+                scrollTexture1.generateMipmaps = false;
+                scrollTexture1.minFilter = THREE.LinearFilter;
+                scrollTexture1.magFilter = THREE.LinearFilter;
+                
+                const scrollMaterial1 = new THREE.SpriteMaterial({ 
+                    map: scrollTexture1, 
+                    transparent: true,
+                    alphaTest: 0.001,
+                    depthTest: false,
+                    depthWrite: false
+                });
+                
+                const scrollSprite1 = new THREE.Sprite(scrollMaterial1);
+                scrollSprite1.scale.set(6, 0.8, 1); // Smaller scale
+                scrollSprite1.position.set(0, -1.2, 0); // Closer to Learning by Design
+                scrollSprite1.renderOrder = 999;
+                scrollSprite1.userData.originalPosition = { x: 0, y: -1.2, z: 0 };
+                scrollSprite1.userData.loadAnimation = null;
+                scrollSprite1.material.opacity = 0; // Start invisible
+                scene.add(scrollSprite1);
+                
+                // Store global reference for loading animation
+                window.scrollSprite1 = scrollSprite1;
+
+
+
+                // Store for professional animation system
+                window.heroElements = {
+                    sprite: heroSprite,
+                    material: heroMaterial,
+                    originalScale: { x: 12, y: 3, z: 1 },
+                    scrollSprite1: scrollSprite1,
+                    scrollMaterial1: scrollMaterial1,
+                    scrollOriginalScale1: { x: 6, y: 0.8, z: 1 }
+                };
+
+                // Ultra-Premium Studio Lighting - Design Agency Grade
+                const ambientLight = new THREE.AmbientLight(0xf8f9f9, 0.3);
+                scene.add(ambientLight);
+                
+                // Primary key light with soft shadows
+                const keyLight = new THREE.DirectionalLight(0xf8f9f9, 1.8);
+                keyLight.position.set(6, 8, 4);
+                keyLight.castShadow = true;
+                keyLight.shadow.mapSize.width = 2048;
+                keyLight.shadow.mapSize.height = 2048;
+                keyLight.shadow.camera.near = 0.5;
+                keyLight.shadow.camera.far = 50;
+                scene.add(keyLight);
+                
+                // Sophisticated fill lighting system
+                const fillLight1 = new THREE.PointLight(0xf8f9f9, 1.2, 15);
+                fillLight1.position.set(-4, 3, -3);
+                scene.add(fillLight1);
+                
+                const fillLight2 = new THREE.PointLight(0x3d4753, 0.8, 12);
+                fillLight2.position.set(3, -2, 5);
+                scene.add(fillLight2);
+                
+                // Premium rim lighting for edge definition
+                const rimLight1 = new THREE.SpotLight(0xf8f9f9, 1.5, 20, Math.PI * 0.1, 0.2);
+                rimLight1.position.set(-6, -4, 3);
+                rimLight1.target.position.set(0, 0, 0);
+                scene.add(rimLight1);
+                scene.add(rimLight1.target);
+                
+                const rimLight2 = new THREE.SpotLight(0xf8f9f9, 1.2, 18, Math.PI * 0.15, 0.3);
+                rimLight2.position.set(5, -3, -4);
+                rimLight2.target.position.set(0, 0, 0);
+                scene.add(rimLight2);
+                scene.add(rimLight2.target);
+                
+                // Accent lighting for premium feel
+                const accentLight = new THREE.PointLight(0xf8f9f9, 0.6, 25);
+                accentLight.position.set(0, 10, 0);
+                scene.add(accentLight);
+                
+                // Store lights for smooth animations
+                window.premiumLights = {
+                    keyLight, fillLight1, fillLight2, 
+                    rimLight1, rimLight2, accentLight
+                };
+
+                // Create VR banner as hero backdrop - maintains proper aspect ratio with inverted colors
+                const bannerTexture = new THREE.TextureLoader().load('assets/images/up.PNG', (texture) => {
+                    // Once texture loads, get its natural dimensions
+                    const img = texture.image;
+                    const aspectRatio = img.width / img.height;
+                    
+                    // Set geometry to maintain aspect ratio - scale to reasonable size
+                    const width = 16; // Base width
+                    const height = width / aspectRatio; // Calculate height to maintain aspect ratio
+                    
+                    bannerMesh.geometry.dispose(); // Clean up old geometry
+                    bannerMesh.geometry = new THREE.PlaneGeometry(width, height);
+                });
+                
+                bannerTexture.generateMipmaps = false;
+                bannerTexture.minFilter = THREE.LinearFilter;
+                bannerTexture.magFilter = THREE.LinearFilter;
+                
+                const bannerMaterial = new THREE.MeshBasicMaterial({ 
+                    map: bannerTexture, 
+                    transparent: true,
+                    opacity: 0.8, // Start visible, fade during scroll
+                    depthTest: false,
+                    depthWrite: false
+                });
+                
+                // Add color tint #2a3441 for subtle visibility
+                bannerMaterial.onBeforeCompile = function(shader) {
+                    shader.fragmentShader = shader.fragmentShader.replace(
+                        '#include <output_fragment>',
+                        `
+                        #include <output_fragment>
+                        // Apply dark blue-gray tint #2a3441
+                        vec3 tintColor = vec3(0.165, 0.204, 0.255); // #2a3441 in RGB
+                        
+                        // Blend the original image with the tint color
+                        // Using multiply blend mode for subtle, non-distracting effect
+                        gl_FragColor.rgb = gl_FragColor.rgb * tintColor * 2.0;
+                        
+                        // Ensure we don't exceed 1.0 and maintain contrast
+                        gl_FragColor.rgb = min(gl_FragColor.rgb, vec3(1.0));
+                        `
+                    );
+                };
+                
+                // Start with a temporary geometry that will be replaced once texture loads
+                const bannerGeometry = new THREE.PlaneGeometry(16, 9); // Temporary 16:9 ratio
+                const bannerMesh = new THREE.Mesh(bannerGeometry, bannerMaterial);
+                bannerMesh.position.set(-50, 0, -5); // Start off-screen to the left
+                bannerMesh.renderOrder = 50; // Render first (behind everything)
+                bannerMesh.userData.originalPosition = { x: 0, y: 0, z: -5 };
+                bannerMesh.userData.loadAnimation = null;
+                scene.add(bannerMesh);
+                
+                // Store global reference for loading animation
+                window.bannerMesh = bannerMesh;
+
+                // Add banner to hero elements for animation
+                window.heroElements.bannerMesh = bannerMesh;
+                window.heroElements.bannerMaterial = bannerMaterial;
+                window.heroElements.bannerOriginalScale = { x: 1, y: 1, z: 1 };
+
+                camera.position.z = 5;
+            }
+            
+            function createTextCanvas(text, width, height, fontSize, isScrollText = false) {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const context = canvas.getContext('2d');
+                
+                // High-DPI rendering for crisp text
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                context.scale(dpr, dpr);
+                
+                // Professional typography settings
+                const fontWeight = isScrollText ? '500' : '900';
+                context.font = `${fontWeight} ${fontSize}px Figtree, sans-serif`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.imageSmoothingEnabled = true;
+                context.imageSmoothingQuality = 'high';
+                
+                // Different styling for scroll text
+                if (isScrollText) {
+                    // Softer gradient for scroll text
+                const gradient = context.createLinearGradient(0, 0, width, 0);
+                    gradient.addColorStop(0, 'rgba(248, 249, 249, 0.8)');
+                    gradient.addColorStop(0.3, 'rgba(248, 249, 249, 0.9)');
+                    gradient.addColorStop(0.7, 'rgba(248, 249, 249, 0.8)');
+                    gradient.addColorStop(1, 'rgba(248, 249, 249, 0.7)');
+                    
+                context.fillStyle = gradient;
+                context.fillText(text, width / 2, height / 2);
+                } else {
+                    // Clean, professional gradient for hero text - no glow
+                    const gradient = context.createLinearGradient(0, 0, width, 0);
+                    gradient.addColorStop(0, '#f8f9f9');
+                    gradient.addColorStop(0.3, '#ffffff');
+                    gradient.addColorStop(0.7, '#f8f9f9');
+                    gradient.addColorStop(1, '#e8e9e9');
+                    
+                    // Clean text rendering - no shadows
+                    context.fillStyle = gradient;
+                    context.fillText(text, width / 2, height / 2);
+                    
+                    // Subtle stroke for crisp definition
+                    context.strokeStyle = 'rgba(248, 249, 249, 0.2)';
+                    context.lineWidth = 0.5;
+                    context.strokeText(text, width / 2, height / 2);
+                }
+                
+                return canvas;
+            }
+            
+            function createResponsiveHeroText() {
+                const canvas = document.createElement('canvas');
+                const width = 2048;
+                const height = 512;
+                canvas.width = width;
+                canvas.height = height;
+                const context = canvas.getContext('2d');
+                
+                // High-DPI rendering for crisp text
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                context.scale(dpr, dpr);
+                
+                // Check if mobile
+                const isMobile = window.innerWidth <= 768;
+                
+                if (isMobile) {
+                    // Mobile: Two-line layout
+                    const fontSize = 100; // Bigger font for mobile
+                    context.font = `900 ${fontSize}px Figtree, sans-serif`;
+                    context.textAlign = 'center';
+                    context.textBaseline = 'middle';
+                    context.imageSmoothingEnabled = true;
+                    context.imageSmoothingQuality = 'high';
+                    
+                    // Create gradient for mobile text
+                    const gradient = context.createLinearGradient(0, 0, width, 0);
+                    gradient.addColorStop(0, '#f8f9f9');
+                    gradient.addColorStop(0.3, '#ffffff');
+                    gradient.addColorStop(0.7, '#f8f9f9');
+                    gradient.addColorStop(1, '#e8e9e9');
+                    
+                    context.fillStyle = gradient;
+                    
+                    // Draw "Learning" on first line
+                    context.fillText('Learning', width / 2, height / 2 - 60);
+                    
+                    // Draw "by Design" on second line
+                    context.fillText('by Design', width / 2, height / 2 + 60);
+                    
+                    // Subtle stroke for crisp definition
+                    context.strokeStyle = 'rgba(248, 249, 249, 0.2)';
+                    context.lineWidth = 0.5;
+                    context.strokeText('Learning', width / 2, height / 2 - 60);
+                    context.strokeText('by Design', width / 2, height / 2 + 60);
+                    
+                } else {
+                    // Desktop/Tablet: Single line
+                    const fontSize = 120;
+                    context.font = `900 ${fontSize}px Figtree, sans-serif`;
+                    context.textAlign = 'center';
+                    context.textBaseline = 'middle';
+                    context.imageSmoothingEnabled = true;
+                    context.imageSmoothingQuality = 'high';
+                    
+                    // Create gradient for desktop text
+                    const gradient = context.createLinearGradient(0, 0, width, 0);
+                    gradient.addColorStop(0, '#f8f9f9');
+                    gradient.addColorStop(0.3, '#ffffff');
+                    gradient.addColorStop(0.7, '#f8f9f9');
+                    gradient.addColorStop(1, '#e8e9e9');
+                    
+                    context.fillStyle = gradient;
+                    context.fillText('Learning by Design.', width / 2, height / 2);
+                    
+                    // Subtle stroke for crisp definition
+                    context.strokeStyle = 'rgba(248, 249, 249, 0.2)';
+                    context.lineWidth = 0.5;
+                    context.strokeText('Learning by Design.', width / 2, height / 2);
+                }
+                
+                return canvas;
+            }
+            
+            function createScrollTextWithIcon(text, width, height, fontSize) {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const context = canvas.getContext('2d');
+                
+                // High-DPI rendering for crisp text
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                context.scale(dpr, dpr);
+                
+                // Professional typography settings for scroll text
+                context.font = `400 ${fontSize}px Figtree, sans-serif`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.imageSmoothingEnabled = true;
+                context.imageSmoothingQuality = 'high';
+                
+                // Softer gradient for scroll text
+                const gradient = context.createLinearGradient(0, 0, width, 0);
+                gradient.addColorStop(0, 'rgba(248, 249, 249, 0.7)');
+                gradient.addColorStop(0.3, 'rgba(248, 249, 249, 0.8)');
+                gradient.addColorStop(0.7, 'rgba(248, 249, 249, 0.7)');
+                gradient.addColorStop(1, 'rgba(248, 249, 249, 0.6)');
+                
+                // Draw the text
+                context.fillStyle = gradient;
+                context.fillText(text, width / 2, height / 2 - 20);
+                
+                // Draw scroll down icon (chevron down)
+                const iconSize = fontSize * 0.6;
+                const iconX = width / 2;
+                const iconY = height / 2 + 30;
+                
+                context.strokeStyle = 'rgba(248, 249, 249, 0.7)';
+                context.lineWidth = 3;
+                context.lineCap = 'round';
+                context.lineJoin = 'round';
+                
+                // Draw chevron down arrow
+                context.beginPath();
+                context.moveTo(iconX - iconSize/2, iconY - iconSize/4);
+                context.lineTo(iconX, iconY + iconSize/4);
+                context.lineTo(iconX + iconSize/2, iconY - iconSize/4);
+                context.stroke();
+                
+                return canvas;
+            }
+
+            // --- UI & INTERACTIONS ---
+            function initUI() {
+                // Custom Cursor
+                const cursorDot = document.getElementById('cursor-dot');
+                const cursorOutline = document.getElementById('cursor-outline');
+                window.addEventListener('mousemove', e => {
+                    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                    cursorDot.style.left = e.clientX + 'px';
+                    cursorDot.style.top = e.clientY + 'px';
+                    cursorOutline.style.left = e.clientX + 'px';
+                    cursorOutline.style.top = e.clientY + 'px';
+                });
+                
+                document.querySelectorAll('a, button, [role="button"], .panel, input').forEach(el => {
+                    el.addEventListener('mouseenter', () => { 
+                        document.body.classList.add('cursor-hover'); 
+                    });
+                    el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+                });
+
+                // Header Scroll Effect
+                const header = document.getElementById('header');
+                window.addEventListener('scroll', () => {
+                    header.classList.toggle('scrolled', window.scrollY > 50);
+                });
+
+                // Scroll Reveal
+                const scrollElements = document.querySelectorAll('.scroll-reveal');
+                const revealObserver = new IntersectionObserver((entries) => {
+                    let delay = 0;
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.style.transitionDelay = delay + 'ms';
+                            entry.target.classList.add('is-visible');
+                            revealObserver.unobserve(entry.target);
+                            delay += 150;
+                        }
+                    });
+                }, { threshold: 0.15 });
+                scrollElements.forEach(el => revealObserver.observe(el));
+                
+                // Background Color Transition for Video Section
+                const videoSection = document.getElementById('video-journal');
+                if (videoSection) {
+                    const backgroundObserver = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                // Video section is visible - change to darker background
+                                document.body.classList.add('video-background');
+                            } else {
+                                // Video section is not visible - revert to original background
+                                document.body.classList.remove('video-background');
+                            }
+                        });
+                    }, { 
+                        threshold: 0.3, // Trigger when 30% of the video section is visible
+                        rootMargin: '-100px 0px -100px 0px' // Add some margin for smoother transitions
+                    });
+                    
+                    backgroundObserver.observe(videoSection);
+                }
+                
+                // Video Player Functionality
+                initVideoPlayers();
+                
+                function initVideoPlayers() {
+                    // Handle play button clicks
+                    document.querySelectorAll('.play-overlay').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const videoId = button.getAttribute('data-video');
+                            const container = button.parentElement;
+                            const thumbnail = container.querySelector('.video-thumbnail');
+                            const video = container.querySelector(`#video-${videoId}`);
+                            
+                            if (video && thumbnail) {
+                                // Hide thumbnail and play button
+                                thumbnail.classList.add('hidden');
+                                button.classList.add('hidden');
+                                
+                                // Show and play video
+                                video.classList.remove('hidden');
+                                video.play();
+                                
+
+                            }
+                        });
+                    });
+                    
+                    // Handle video ended event to show thumbnail again
+                    document.querySelectorAll('video').forEach(video => {
+                        video.addEventListener('ended', () => {
+                            const container = video.parentElement;
+                            const thumbnail = container.querySelector('.video-thumbnail');
+                            const playButton = container.querySelector('.play-overlay');
+                            
+                            if (thumbnail && playButton) {
+                                // Hide video
+                                video.classList.add('hidden');
+                                video.currentTime = 0; // Reset to beginning
+                                
+                                // Show thumbnail and play button
+                                thumbnail.classList.remove('hidden');
+                                playButton.classList.remove('hidden');
+                            }
+                        });
+                    });
+                }
+
+                // About Modal functionality
+                const aboutBtn = document.getElementById('about-btn');
+                const aboutModal = document.getElementById('about-modal');
+                const modalClose = document.getElementById('modal-close');
+                
+                function openModal() {
+                    aboutModal.style.display = 'flex';
+                    setTimeout(() => {
+                        aboutModal.classList.add('show');
+                    }, 10);
+                    document.body.style.overflow = 'hidden';
+                }
+                
+                function closeModal() {
+                    aboutModal.classList.remove('show');
+                    setTimeout(() => {
+                        aboutModal.style.display = 'none';
+                        document.body.style.overflow = 'auto';
+                    }, 300);
+                }
+                
+                aboutBtn.addEventListener('click', openModal);
+                modalClose.addEventListener('click', closeModal);
+                
+                // Close modal when clicking outside content
+                aboutModal.addEventListener('click', (e) => {
+                    if (e.target === aboutModal) {
+                        closeModal();
+                    }
+                });
+                
+                // Close modal with Escape key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && aboutModal.classList.contains('show')) {
+                        closeModal();
+                    }
+                });
+                
+                                // Footer
+                const lastUpdated = document.getElementById('last-updated');
+                lastUpdated.textContent = 'Designed and Developed by Sethu Nguna (2025)';
+            }
+
+            // --- ANIMATION LOOP ---
+            function handleLoadingAnimations() {
+                const currentTime = Date.now();
+                
+                // Handle VR banner slide from left
+                if (window.bannerMesh && window.bannerMesh.userData.loadAnimation === 'slideFromLeft') {
+                    const elapsed = currentTime - window.bannerMesh.userData.animationStart;
+                    const duration = 1200; // 1.2 seconds
+                    const progress = Math.min(1, elapsed / duration);
+                    
+                    // Smooth easing function
+                    const easeProgress = 1 - Math.pow(1 - progress, 3);
+                    
+                    const startX = -50;
+                    const endX = window.bannerMesh.userData.originalPosition.x;
+                    window.bannerMesh.position.x = startX + (endX - startX) * easeProgress;
+                    
+                    if (progress >= 1) {
+                        window.bannerMesh.userData.loadAnimation = null;
+                    }
+                }
+                
+                // Handle hero text slide from right
+                if (window.heroSprite && window.heroSprite.userData.loadAnimation === 'slideFromRight') {
+                    const elapsed = currentTime - window.heroSprite.userData.animationStart;
+                    const duration = 1400; // 1.4 seconds
+                    const progress = Math.min(1, elapsed / duration);
+                    
+                    // Smooth easing function
+                    const easeProgress = 1 - Math.pow(1 - progress, 3);
+                    
+                    const startX = 50;
+                    const endX = window.heroSprite.userData.originalPosition.x;
+                    window.heroSprite.position.x = startX + (endX - startX) * easeProgress;
+                    
+                    if (progress >= 1) {
+                        window.heroSprite.userData.loadAnimation = null;
+                    }
+                }
+                
+                // Handle scroll text fade in
+                if (window.scrollSprite1 && window.scrollSprite1.userData.loadAnimation === 'fadeIn') {
+                    const elapsed = currentTime - window.scrollSprite1.userData.animationStart;
+                    const duration = 1000; // 1 second
+                    const progress = Math.min(1, elapsed / duration);
+                    
+                    // Smooth easing function
+                    const easeProgress = 1 - Math.pow(1 - progress, 2);
+                    
+                    window.scrollSprite1.material.opacity = easeProgress;
+                    
+                    // Subtle upward movement
+                    const startY = window.scrollSprite1.userData.originalPosition.y - 0.2;
+                    const endY = window.scrollSprite1.userData.originalPosition.y;
+                    window.scrollSprite1.position.y = startY + (endY - startY) * easeProgress;
+                    
+                    if (progress >= 1) {
+                        window.scrollSprite1.userData.loadAnimation = null;
+                    }
+                }
+            }
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Responsive scaling for mobile devices - improved proportions
+                const isMobile = window.innerWidth <= 768;
+                const isTablet = window.innerWidth <= 1024 && window.innerWidth > 768;
+                
+                // Better mobile scaling with multi-line text support
+                let mobileScale, mobileScaleY;
+                if (isMobile) {
+                    mobileScale = 0.8; // Bigger text for mobile
+                    mobileScaleY = 1.0; // Full height for two-line layout
+                } else if (isTablet) {
+                    mobileScale = 0.75;
+                    mobileScaleY = 0.85;
+                } else {
+                    mobileScale = 1.0;
+                    mobileScaleY = 1.0;
+                }
+                
+                // Scrollytelling Logic
+                const scrollY = window.scrollY;
+                const scrollHeight = document.body.scrollHeight - window.innerHeight;
+                const scrollPercent = scrollY / scrollHeight;
+                
+                // Calculate video section position for professional text transition
+                const videoSection = document.getElementById('video-journal');
+                const videoSectionTop = videoSection ? videoSection.offsetTop : window.innerHeight * 3;
+                const videoScrollProgress = Math.min(1, Math.max(0, scrollY / videoSectionTop));
+                
+                // Handle loading animations
+                handleLoadingAnimations();
+                
+                // World-Class Typography Animation System - Master Designer Quality
+                const time = Date.now() * 0.0001; // Ultra-refined cinematic timing
+                const globalTime = time * 0.8; // Secondary time for layered complexity
+                
+                if (window.heroElements) {
+                    const { 
+                        sprite: heroSprite, 
+                        material: heroMaterial, 
+                        originalScale,
+                        scrollSprite1,
+                        scrollMaterial1,
+                        scrollOriginalScale1,
+                        bannerMesh,
+                        bannerMaterial,
+                        bannerOriginalScale
+                    } = window.heroElements;
+                    
+                    // Master-Level Easing Functions - Physics & Psychology Based
+                    const anticipationEase = (t) => {
+                        // Mimics natural anticipation before movement
+                        if (t < 0.1) return -0.05 * Math.sin(t * Math.PI * 10);
+                        return 1 - Math.pow(1 - (t - 0.1) / 0.9, 4) + 0.05 * Math.sin(t * Math.PI * 2);
+                    };
+                    
+                    const fluidEase = (t) => {
+                        // Liquid-like motion with surface tension
+                        const elastic = Math.pow(2, -8 * t) * Math.sin((t * 0.8 - 0.075) * (2 * Math.PI) / 0.3) + 1;
+                        const smooth = 1 - Math.pow(1 - t, 3);
+                        return smooth * 0.7 + elastic * 0.3;
+                    };
+                    
+                    const magneticEase = (t) => {
+                        // Magnetic attraction with resistance
+                        const resistance = Math.exp(-t * 3);
+                        const attraction = 1 - Math.pow(1 - t, 2.5);
+                        return attraction + resistance * Math.sin(t * Math.PI * 4) * 0.02;
+                    };
+                    
+                    const organicEase = (t) => {
+                        // Biological growth pattern
+                        const growth = 1 - Math.exp(-t * 4);
+                        const pulse = Math.sin(t * Math.PI * 0.5) * 0.1;
+                        return growth + pulse * (1 - t);
+                    };
+                    
+                    // Cinematic Timeline with Micro-Timing
+                    const textFadeStart = 0.15;
+                    const textFadeEnd = 0.7;
+                    const rawProgress = Math.min(1, Math.max(0, 
+                        (videoScrollProgress - textFadeStart) / (textFadeEnd - textFadeStart)
+                    ));
+                    
+                    // Multi-dimensional easing with psychological timing
+                    const fadeProgress = anticipationEase(rawProgress);
+                    const scaleProgress = fluidEase(rawProgress);
+                    const moveProgress = magneticEase(rawProgress);
+                    const rotateProgress = organicEase(Math.min(1, rawProgress * 0.85));
+                    
+                    // Master-Class Breathing System - 16 Harmonic Layers
+                    const phi = (1 + Math.sqrt(5)) / 2; // Golden ratio for natural harmony
+                    
+                    // Primary breathing harmonics
+                    const breath1 = Math.sin(time * phi) * 0.035;
+                    const breath2 = Math.cos(time * phi * 0.618) * 0.028;
+                    const breath3 = Math.sin(time * phi * 1.618) * 0.022;
+                    const breath4 = Math.cos(time * phi * 2.618) * 0.018;
+                    
+                    // Secondary micro-harmonics
+                    const micro1 = Math.sin(time * phi * 3.14) * 0.012;
+                    const micro2 = Math.cos(time * phi * 4.236) * 0.008;
+                    const micro3 = Math.sin(time * phi * 5.854) * 0.005;
+                    const micro4 = Math.cos(time * phi * 7.472) * 0.003;
+                    
+                    const breathingOpacity = 1 + breath1 + breath2 + breath3 + breath4 + micro1 + micro2 + micro3 + micro4;
+                    const scrollOpacity = 1 - fadeProgress;
+                    const finalOpacity = scrollOpacity * breathingOpacity;
+                    heroMaterial.opacity = Math.max(0, finalOpacity);
+                    
+                    // Physics-Based Scale Animation with Natural Harmonics
+                    const baseScale = 1 - (scaleProgress * 0.2);
+                    
+                    // Natural frequency scaling based on Fibonacci sequence
+                    const fib = [1, 1, 2, 3, 5, 8, 13, 21];
+                    let scaleHarmonics = 1;
+                    for (let i = 0; i < fib.length; i++) {
+                        scaleHarmonics += Math.sin(time * fib[i] * 0.1) * (0.02 / (i + 1));
+                    }
+                    
+                    const finalScaleX = baseScale * scaleHarmonics * mobileScale;
+                    const finalScaleY = baseScale * scaleHarmonics * mobileScaleY;
+                    heroSprite.scale.set(
+                        originalScale.x * finalScaleX, 
+                        originalScale.y * finalScaleY, 
+                        originalScale.z
+                    );
+                    
+                    // Master-Level Floating Motion - Chaos Theory & Fluid Dynamics
+                    const lorenzX = Math.sin(time * 0.7) * Math.cos(globalTime * 1.3) * 0.04;
+                    const lorenzY = Math.cos(time * 0.9) * Math.sin(globalTime * 0.6) * 0.05;
+                    const lorenzZ = Math.sin(time * 1.1) * Math.cos(globalTime * 0.8) * 0.02;
+                    
+                    // Fluid dynamics simulation
+                    const fluidX1 = Math.sin(time * 0.8 + Math.cos(time * 1.6) * 0.5) * 0.035;
+                    const fluidX2 = Math.cos(time * 1.2 + Math.sin(time * 0.4) * 0.3) * 0.025;
+                    const fluidY1 = Math.sin(time * 0.6 + Math.cos(time * 2.1) * 0.4) * 0.045;
+                    const fluidY2 = Math.cos(time * 1.4 + Math.sin(time * 0.7) * 0.6) * 0.032;
+                    
+                    // Brownian motion simulation
+                    const brownianX = Math.sin(time * 3.7) * Math.cos(time * 5.3) * 0.015;
+                    const brownianY = Math.cos(time * 4.1) * Math.sin(time * 6.7) * 0.018;
+                    
+                    // Combine all motion systems
+                    const totalFloatX = lorenzX + fluidX1 + fluidX2 + brownianX;
+                    const totalFloatY = lorenzY + fluidY1 + fluidY2 + brownianY;
+                    const totalFloatZ = lorenzZ;
+                    
+                    // Cinematic Exit Trajectory - Bezier Curve Path
+                    const bezierT = moveProgress;
+                    const p0 = { x: 0, y: 0 };
+                    const p1 = { x: 0.3, y: 0.1 };
+                    const p2 = { x: 0.7, y: 1.2 };
+                    const p3 = { x: 1.0, y: 2.0 };
+                    
+                    const exitX = Math.pow(1-bezierT, 3) * p0.x + 
+                                 3 * Math.pow(1-bezierT, 2) * bezierT * p1.x +
+                                 3 * (1-bezierT) * Math.pow(bezierT, 2) * p2.x +
+                                 Math.pow(bezierT, 3) * p3.x;
+                    
+                    const exitY = Math.pow(1-bezierT, 3) * p0.y + 
+                                 3 * Math.pow(1-bezierT, 2) * bezierT * p1.y +
+                                 3 * (1-bezierT) * Math.pow(bezierT, 2) * p2.y +
+                                 Math.pow(bezierT, 3) * p3.y;
+                    
+                    const exitZ = moveProgress * 0.4 + Math.sin(moveProgress * Math.PI) * 0.1;
+                    
+                    // Final position with world-class layered movement and mobile adjustments
+                    const mobileYOffset = isMobile ? -1.0 : 0; // Adjusted for smaller mobile text
+                    heroSprite.position.x = totalFloatX + exitX;
+                    heroSprite.position.y = totalFloatY + exitY + mobileYOffset;
+                    heroSprite.position.z = totalFloatZ + exitZ;
+                    
+                    // Master-Level Rotation System - Quaternion-Inspired
+                    const gyroX = Math.sin(time * 0.5 + Math.cos(time * 1.7) * 0.3) * 0.015;
+                    const gyroY = Math.cos(time * 0.7 + Math.sin(time * 1.3) * 0.4) * 0.018;
+                    const gyroZ = Math.sin(time * 0.9 + Math.cos(time * 0.6) * 0.2) * 0.012;
+                    
+                    // Precession simulation (like a spinning top)
+                    const precessionX = Math.sin(time * 0.3) * Math.cos(globalTime * 0.1) * 0.008;
+                    const precessionY = Math.cos(time * 0.4) * Math.sin(globalTime * 0.15) * 0.010;
+                    const precessionZ = Math.sin(time * 0.2) * Math.cos(globalTime * 0.12) * 0.006;
+                    
+                    // Cinematic exit rotation with spiral trajectory
+                    const spiralRotX = rotateProgress * 0.2 + Math.sin(rotateProgress * Math.PI * 3) * 0.05;
+                    const spiralRotY = scaleProgress * 0.15 + Math.cos(scaleProgress * Math.PI * 2.5) * 0.04;
+                    const spiralRotZ = fadeProgress * 0.25 + Math.sin(fadeProgress * Math.PI * 4) * 0.06;
+                    
+                    heroSprite.rotation.x = gyroX + precessionX + spiralRotX;
+                    heroSprite.rotation.y = gyroY + precessionY + spiralRotY;
+                    heroSprite.rotation.z = gyroZ + precessionZ + spiralRotZ;
+                    
+                    // Animate scroll text with hero text - synchronized movement
+                    if (scrollSprite1 && scrollMaterial1) {
+                        // Apply same opacity but with slight delay and reduced intensity
+                        const scrollOpacity1 = finalOpacity * 0.8; // Slightly more transparent
+                        scrollMaterial1.opacity = Math.max(0, scrollOpacity1);
+                        
+                        // Scale with hero but slightly smaller reduction, with proper mobile scaling
+                        const scrollScaleX = baseScale * scaleHarmonics * 0.95 * mobileScale;
+                        const scrollScaleY = baseScale * scaleHarmonics * 0.95 * mobileScaleY;
+                        scrollSprite1.scale.set(
+                            scrollOriginalScale1.x * scrollScaleX,
+                            scrollOriginalScale1.y * scrollScaleY,
+                            scrollOriginalScale1.z
+                        );
+                        
+                        // Position follows hero with offset and slight delay
+                        const delayedFloatX = lorenzX * 0.8 + fluidX1 * 0.9 + fluidX2 * 0.8 + brownianX * 0.7;
+                        const delayedFloatY = lorenzY * 0.9 + fluidY1 * 0.8 + fluidY2 * 0.9 + brownianY * 0.8;
+                        
+                        // Mobile-responsive positioning for scroll text - adjusted for smaller text
+                        const mobileScrollYOffset = isMobile ? -0.8 : -1.2; // Adjusted for smaller mobile text
+                        scrollSprite1.position.x = totalFloatX * 0.8 + exitX * 0.9;
+                        scrollSprite1.position.y = totalFloatY * 0.8 + exitY * 0.9 + mobileScrollYOffset + mobileYOffset;
+                        scrollSprite1.position.z = totalFloatZ * 0.7 + exitZ * 0.8;
+                        
+                        // Subtle rotation following hero
+                        scrollSprite1.rotation.x = (gyroX + precessionX) * 0.6 + spiralRotX * 0.8;
+                        scrollSprite1.rotation.y = (gyroY + precessionY) * 0.7 + spiralRotY * 0.8;
+                        scrollSprite1.rotation.z = (gyroZ + precessionZ) * 0.5 + spiralRotZ * 0.7;
+                    }
+                    
+
+                    
+                    // VR Banner backdrop fade animation - buttery smooth disappearance
+                    if (bannerMesh && bannerMaterial) {
+                        // Extended, gradual fade for ultra-smooth transition
+                        const bannerFadeStart = 0.1; // Start fading early for smoother transition
+                        const bannerFadeEnd = 0.8;   // Complete fade before videos appear
+                        
+                        const bannerFadeProgress = Math.min(1, Math.max(0, 
+                            (videoScrollProgress - bannerFadeStart) / (bannerFadeEnd - bannerFadeStart)
+                        ));
+                        
+                        // Ultra-smooth buttery easing for fade out - reverse of reveal
+                        const fadeEase = (t) => {
+                            // Buttery smooth multi-stage easing for fade out
+                            // Stage 1: Gentle start with cubic ease-in
+                            if (t < 0.3) {
+                                const stage1 = t / 0.3;
+                                return Math.pow(stage1, 3) * 0.3; // Gentle fade start
+                            }
+                            
+                            // Stage 2: Smooth acceleration with sine wave
+                            if (t < 0.7) {
+                                const stage2 = (t - 0.3) / 0.4;
+                                const sineEase = Math.sin(stage2 * Math.PI * 0.5);
+                                return 0.3 + (sineEase * 0.5); // Smooth middle fade
+                            }
+                            
+                            // Stage 3: Final fade with exponential ease-out
+                            const stage3 = (t - 0.7) / 0.3;
+                            const expEase = 1 - Math.pow(2, -10 * stage3);
+                            return 0.8 + (expEase * 0.2); // Complete fade
+                        };
+                        
+                        const easedFade = fadeEase(bannerFadeProgress);
+                        
+                        // Banner opacity decreases as user scrolls (reverse of reveal)
+                        const bannerOpacity = (1 - easedFade) * 0.8; // Start at 80%, fade to 0%
+                        bannerMaterial.opacity = Math.max(0, bannerOpacity);
+                        
+                        // Buttery smooth scaling with micro-adjustments - reverse scaling
+                        const scaleReduction = easedFade * 0.08; // Scale down as it fades
+                        const microBreathing = Math.sin(time * 0.3) * 0.005; // Subtle breathing
+                        const bannerScale = bannerOriginalScale.x + 0.08 - scaleReduction + microBreathing; // Start larger, scale down
+                        bannerMesh.scale.set(bannerScale, bannerScale, bannerOriginalScale.z);
+                        
+                        // Banner moves more slowly, creating depth parallax effect
+                        const bannerFloatX = totalFloatX * 0.2;
+                        const bannerFloatY = totalFloatY * 0.2;
+                        const bannerFloatZ = totalFloatZ * 0.1;
+                        
+                        // Position with subtle movement
+                        bannerMesh.position.x = bannerFloatX;
+                        bannerMesh.position.y = bannerFloatY;
+                        bannerMesh.position.z = -5 + bannerFloatZ; // Stay far behind
+                        
+                        // Very subtle rotation for depth and life
+                        bannerMesh.rotation.x = (gyroX + precessionX) * 0.1;
+                        bannerMesh.rotation.y = (gyroY + precessionY) * 0.1;
+                        bannerMesh.rotation.z = (gyroZ + precessionZ) * 0.05;
+                    }
+                }
+                
+                // Smooth lighting animations for premium feel with full-screen adaptation
+                if (window.premiumLights) {
+                    const lights = window.premiumLights;
+                    
+                    // Adapt lighting intensity based on shape size
+                    const lightingMultiplier = 1 + (videoScrollProgress * 0.5);
+                    const ambientBoost = videoScrollProgress * 0.3;
+                    
+                    // Gentle intensity breathing with size adaptation
+                    lights.keyLight.intensity = (1.8 + Math.sin(time * 0.5) * 0.2) * lightingMultiplier;
+                    lights.fillLight1.intensity = (1.2 + Math.cos(time * 0.7) * 0.15) * lightingMultiplier;
+                    lights.fillLight2.intensity = (0.8 + Math.sin(time * 0.6) * 0.1) * lightingMultiplier;
+                    
+                    // Enhanced rim lighting for full-screen effect
+                    lights.rimLight1.intensity = (1.5 + Math.sin(time * 0.8) * 0.3) * (1 + videoScrollProgress * 0.8);
+                    lights.rimLight2.intensity = (1.2 + Math.cos(time * 0.9) * 0.25) * (1 + videoScrollProgress * 0.8);
+                    
+                    // Accent light becomes more prominent as background
+                    lights.accentLight.intensity = (0.6 + Math.sin(time * 0.4) * 0.2) * (1 + videoScrollProgress * 1.2);
+                    
+                    // Expand light positions for full-screen coverage
+                    const positionExpansion = 1 + (videoScrollProgress * 2);
+                    lights.fillLight1.position.x = (-4 + Math.sin(time * 0.3) * 0.5) * positionExpansion;
+                    lights.fillLight2.position.z = (5 + Math.cos(time * 0.4) * 0.3) * positionExpansion;
+                    
+                    // Move key light further back for better full-screen illumination
+                    lights.keyLight.position.z = 4 + (videoScrollProgress * 6);
+                }
+
+                // Parallax for camera based on mouse
+                camera.position.x += (mouse.x * 0.5 - camera.position.x) * 0.05;
+                camera.lookAt(scene.position);
+                
+                renderer.render(scene, camera);
+            }
+            
+            window.addEventListener('resize', () => {
+                if (camera && renderer) {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+            });
+            
+            // Initialize without starting audio context (will start on first user interaction)
+            init();
+        });
+    </script>
+</body>
+</html>
+
