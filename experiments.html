@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiments - Malloc VR MCP</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Preload main page for faster back navigation -->
+    <link rel="prefetch" href="index.html">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #3d4753;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden; /* Remove all scrollbars */
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            height: 100vh; /* Fixed viewport height */
+        }
+        
+        body.loaded { 
+            opacity: 1; 
+        }
+        
+        /* Preloader */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #3d4753;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s ease-in-out;
+        }
+        
+        /* Page transition overlay */
+        #page-transition {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #3d4753;
+            z-index: 9998;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Enhanced navigation hover effects */
+        .nav-link { 
+            position: relative; 
+            overflow: hidden; 
+        }
+        .nav-link::before { 
+            content: ''; 
+            position: absolute; 
+            top: 0; 
+            left: -100%; 
+            width: 100%; 
+            height: 100%; 
+            background: linear-gradient(90deg, transparent, rgba(248, 249, 249, 0.1), transparent); 
+            transition: left 0.5s ease; 
+            z-index: -1; 
+        }
+        .nav-link:hover::before { 
+            left: 100%; 
+        }
+        
+        /* Header Panel Styling */
+        .header-panel {
+            background: rgba(61, 71, 83, 0.95);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            height: 60px; /* Compact header height */
+            padding: 0;
+        }
+        
+        /* WebGL Canvas */
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* Experiment Cards */
+        .experiment-card {
+            background: rgba(61, 71, 83, 0.95);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(248, 249, 249, 0.2);
+            border-radius: 16px;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            opacity: 0;
+            transform: translateY(30px);
+            will-change: transform, opacity;
+        }
+        
+        .experiment-card.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .experiment-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(248, 249, 249, 0.5);
+            box-shadow: 0 20px 48px rgba(61, 71, 83, 0.4);
+        }
+        
+        .experiment-status {
+            display: inline-block;
+            font-weight: 500;
+        }
+        
+        /* Page Load Animations */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(40px) scale(0.95);
+            transition: opacity 1s cubic-bezier(0.19, 1, 0.22, 1), 
+                        transform 1s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        
+        .fade-in-up.animate {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        
+        /* Title animation with enhanced easing */
+        .title-animate {
+            opacity: 0;
+            transform: translateY(50px) scale(0.9);
+            filter: blur(10px);
+            transition: all 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        
+        .title-animate.animate {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0px);
+        }
+        
+        /* Staggered animation delays */
+        .experiment-card:nth-child(1) { transition-delay: 0.1s; }
+        .experiment-card:nth-child(2) { transition-delay: 0.2s; }
+        .experiment-card:nth-child(3) { transition-delay: 0.3s; }
+        .experiment-card:nth-child(4) { transition-delay: 0.4s; }
+        .experiment-card:nth-child(5) { transition-delay: 0.5s; }
+        .experiment-card:nth-child(6) { transition-delay: 0.6s; }
+        
+        /* Custom cursor styling */
+        #cursor-dot {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background-color: #f8f9f9;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            mix-blend-mode: difference;
+            transition: transform 0.1s ease;
+        }
+        
+        #cursor-outline {
+            position: fixed;
+            width: 24px;
+            height: 24px;
+            border: 1px solid rgba(248, 249, 249, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transition: all 0.2s ease;
+        }
+        
+        /* Custom Scrollbar Styling */
+        ::-webkit-scrollbar { width: 12px; }
+        ::-webkit-scrollbar-track { background: #3d4753; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb { background: #f8f9f9; border-radius: 6px; border: 2px solid #3d4753; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(248, 249, 249, 0.8); }
+        ::-webkit-scrollbar-corner { background: #3d4753; }
+
+        /* Firefox Scrollbar */
+        html { 
+            scrollbar-width: none; /* Firefox - hide scrollbar */
+            overflow: hidden; /* Ensure no scrolling */
+            height: 100vh;
+        }
+        
+        /* Hide scrollbars in all browsers */
+        html::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Mobile blocking overlay */
+        #mobile-block {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #3d4753;
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+        }
+
+        #mobile-block h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #f8f9f9;
+            margin-bottom: 20px;
+        }
+
+        #mobile-block p {
+            font-size: 18px;
+            color: rgba(248, 249, 249, 0.8);
+            line-height: 1.6;
+            max-width: 500px;
+            margin-bottom: 30px;
+        }
+
+
+
+        body.mobile-blocked {
+            overflow: hidden;
+        }
+
+        body.mobile-blocked #mobile-block {
+            display: flex;
+        }
+
+        /* Floating Tabs Styling */
+        .floating-tabs-container {
+            position: fixed;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .floating-tab {
+            background: rgba(61, 71, 83, 0.95);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(248, 249, 249, 0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+            min-width: 140px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            opacity: 0;
+            transform: translateX(100px) scale(0.8);
+            will-change: transform, opacity;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .floating-tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(248, 249, 249, 0.1), transparent);
+            transition: left 0.6s ease;
+            z-index: -1;
+        }
+
+        .floating-tab:hover::before {
+            left: 100%;
+        }
+
+        .floating-tab.animate-in {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+
+        .floating-tab:hover {
+            transform: translateX(-8px) scale(1.05);
+            border-color: rgba(248, 249, 249, 0.5);
+            box-shadow: 0 12px 32px rgba(61, 71, 83, 0.6);
+            background: rgba(61, 71, 83, 1);
+        }
+
+        .floating-tab.active {
+            background: rgba(248, 249, 249, 0.1);
+            border-color: rgba(248, 249, 249, 0.6);
+            transform: translateX(-12px) scale(1.08);
+            box-shadow: 0 16px 40px rgba(61, 71, 83, 0.8);
+        }
+
+        .floating-tab-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #f8f9f9;
+            transition: color 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+
+        .floating-tab:hover .floating-tab-title {
+            color: #ffffff;
+        }
+
+        /* Staggered animation delays for floating tabs */
+        .floating-tab:nth-child(1) { transition-delay: 0.1s; }
+        .floating-tab:nth-child(2) { transition-delay: 0.2s; }
+        .floating-tab:nth-child(3) { transition-delay: 0.3s; }
+        .floating-tab:nth-child(4) { transition-delay: 0.4s; }
+        .floating-tab:nth-child(5) { transition-delay: 0.5s; }
+
+        /* Responsive behavior for floating tabs */
+        @media (max-width: 1024px) {
+            .floating-tabs-container {
+                right: 20px;
+            }
+            
+            .floating-tab {
+                min-width: 120px;
+                padding: 12px 16px;
+            }
+            
+            .floating-tab-title {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .floating-tabs-container {
+                position: relative;
+                top: auto;
+                right: auto;
+                transform: none;
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+                margin: 32px 0;
+            }
+            
+            .floating-tab {
+                min-width: 100px;
+                padding: 10px 14px;
+            }
+            
+            .floating-tab-title {
+                font-size: 12px;
+            }
+        }
+
+        /* Popup Animation Styles */
+        .tab-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .tab-popup-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tab-popup {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, rgba(61, 71, 83, 0.98), rgba(42, 52, 65, 0.98));
+            border-radius: 32px 32px 0 0;
+            border: 1px solid rgba(248, 249, 249, 0.2);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            transform: translateY(100%);
+            transition: transform 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+
+        .tab-popup-overlay.active .tab-popup {
+            transform: translateY(0);
+        }
+
+        .tab-popup-header {
+            padding: 32px 40px 24px;
+            border-bottom: 1px solid rgba(248, 249, 249, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tab-popup-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #f8f9f9;
+            margin: 0;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            transition-delay: 0.3s;
+        }
+
+        .tab-popup-overlay.active .tab-popup-title {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .tab-popup-close {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(248, 249, 249, 0.1);
+            border: 1px solid rgba(248, 249, 249, 0.2);
+            color: #f8f9f9;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: scale(0.8);
+            transition-delay: 0.4s;
+        }
+
+        .tab-popup-overlay.active .tab-popup-close {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .tab-popup-close:hover {
+            background: rgba(248, 249, 249, 0.2);
+            transform: scale(1.1);
+        }
+
+        .tab-popup-content {
+            padding: 24px 32px;
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            transition-delay: 0.5s;
+            /* Custom scrollbar for content */
+        }
+        
+        .tab-popup-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .tab-popup-content::-webkit-scrollbar-track {
+            background: rgba(248, 249, 249, 0.1);
+            border-radius: 4px;
+        }
+        
+        .tab-popup-content::-webkit-scrollbar-thumb {
+            background: rgba(248, 249, 249, 0.3);
+            border-radius: 4px;
+        }
+        
+        .tab-popup-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(248, 249, 249, 0.5);
+        }
+
+        .tab-popup-overlay.active .tab-popup-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Background Image Swallow Animation */
+        .background-image-clone {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background-image: url('assets/images/up_behind.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 999;
+            opacity: 0.4;
+            transition: all 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+            pointer-events: none;
+        }
+
+        .background-image-clone.swallow {
+            transform: scale(0.3) translateY(150vh);
+            opacity: 0;
+            filter: blur(10px);
+        }
+
+        /* Responsive popup styles */
+        @media (max-width: 768px) {
+            .tab-popup {
+                height: 100vh;
+                border-radius: 16px 16px 0 0;
+            }
+            
+            .tab-popup-header {
+                padding: 16px 20px 12px;
+            }
+            
+            .tab-popup-title {
+                font-size: 20px;
+            }
+            
+            .tab-popup-content {
+                padding: 16px 20px;
+                height: calc(100vh - 80px);
+            }
+            
+            .tab-popup-close {
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+            }
+            
+            /* Compact header on mobile */
+            .header-panel {
+                height: 50px;
+            }
+            
+            /* Adjust main content padding for mobile */
+            main {
+                padding-top: 50px !important;
+            }
+            
+            /* Smaller floating tabs on mobile */
+            .floating-tabs-container {
+                position: relative !important;
+                top: auto !important;
+                right: auto !important;
+                transform: none !important;
+                flex-direction: row !important;
+                justify-content: center !important;
+                flex-wrap: wrap !important;
+                margin: 16px 0 !important;
+                padding: 0 16px;
+            }
+            
+            .floating-tab {
+                min-width: 80px !important;
+                padding: 8px 12px !important;
+            }
+            
+            .floating-tab-title {
+                font-size: 11px !important;
+            }
+            
+            /* Ultra compact title for mobile */
+            .title-animate {
+                font-size: 28px !important;
+                margin-bottom: 8px !important;
+            }
+            
+            /* Smaller description text */
+            main p {
+                font-size: 14px !important;
+                line-height: 1.4 !important;
+            }
+        }
+        
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            .header-panel {
+                height: 45px;
+            }
+            
+            main {
+                padding-top: 45px !important;
+            }
+            
+            .title-animate {
+                font-size: 24px !important;
+                margin-bottom: 6px !important;
+            }
+            
+            main p {
+                font-size: 13px !important;
+                padding: 0 12px !important;
+            }
+            
+            .floating-tabs-container {
+                margin: 12px 0 !important;
+                padding: 0 12px !important;
+            }
+            
+            .floating-tab {
+                min-width: 70px !important;
+                padding: 6px 10px !important;
+                margin: 2px !important;
+            }
+            
+            .floating-tab-title {
+                font-size: 10px !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-[#f8f9f9] antialiased">
+
+    <div id="cursor-dot"></div>
+    <div id="cursor-outline"></div>
+    
+    <!-- Mobile Block Overlay -->
+    <div id="mobile-block">
+        <h1>Desktop Only Experience</h1>
+        <p>This VR design platform is optimized for desktop computers and requires a larger screen for the best experience. Please visit us from a desktop or laptop computer.</p>
+    </div>
+    
+    <!-- Preloader -->
+    <div id="preloader">
+        <svg class="w-16 h-16 text-[#f8f9f9] animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </div>
+    
+    <!-- Page Transition Overlay -->
+    <div id="page-transition"></div>
+
+    <!-- WebGL Background Canvas -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Floating Tabs -->
+    <div class="floating-tabs-container">
+        <div class="floating-tab" data-tab="environment">
+            <div class="floating-tab-title">Environment</div>
+        </div>
+        <div class="floating-tab" data-tab="sound">
+            <div class="floating-tab-title">Sound</div>
+        </div>
+        <div class="floating-tab" data-tab="interaction">
+            <div class="floating-tab-title">Interaction</div>
+        </div>
+        <div class="floating-tab" data-tab="ui">
+            <div class="floating-tab-title">UI</div>
+        </div>
+        <div class="floating-tab" data-tab="object-models">
+            <div class="floating-tab-title">3D Models</div>
+        </div>
+    </div>
+
+    <!-- Tab Popup Overlay -->
+    <div class="tab-popup-overlay" id="tabPopup">
+        <div class="tab-popup">
+            <div class="tab-popup-header">
+                <h2 class="tab-popup-title" id="popupTitle">Tab Title</h2>
+                <button class="tab-popup-close" id="popupClose">
+                    ×
+                </button>
+            </div>
+            <div class="tab-popup-content" id="popupContent">
+                <p>Tab content will be loaded here...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header-panel">
+        <nav class="h-full px-6 flex justify-between items-center">
+            <div class="flex items-center">
+                <a href="index.html" class="nav-link text-lg font-bold text-[#f8f9f9] hover:text-[#f8f9f9]/80 transition-all duration-300 tracking-tight transform hover:scale-105 hover:-translate-x-1">
+                    ← Back to Main
+                </a>
+            </div>
+            <div class="flex items-center">
+                <h1 class="text-lg font-bold text-[#f8f9f9] tracking-tight">
+                </h1>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="relative z-10" style="height: 100vh; padding-top: 60px; display: flex; flex-direction: column;">
+        <div class="flex-1 flex items-center justify-center">
+            <div class="text-center">
+                <h1 class="title-animate text-4xl font-bold text-[#f8f9f9] mb-4">
+                    Experiments
+                </h1>
+                <p class="text-[#f8f9f9]/70 text-lg max-w-2xl mx-auto px-6"> 
+                    Use the floating tabs to access a collection of experiments exploring VR design.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-0 right-0 z-10 bg-transparent">
+        <div class="text-center py-3 text-[#f8f9f9]/60 text-xs">
+            <p>Designed and Developed by Sethu Nguna (2025)</p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile Detection and Blocking
+        function detectMobile() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/.test(userAgent);
+            const isSmallScreen = window.innerWidth < 1024;
+            
+            return isMobile || isSmallScreen;
+        }
+
+        function checkMobileAccess() {
+            if (detectMobile()) {
+                document.body.classList.add('mobile-blocked');
+                // Disable all scripts and interactions
+                return false;
+            }
+            return true;
+        }
+
+        // Check immediately when script loads
+        if (!checkMobileAccess()) {
+            // Stop execution for mobile devices
+            throw new Error('Mobile access blocked');
+        }
+
+        // Also check on resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth < 1024) {
+                document.body.classList.add('mobile-blocked');
+            } else {
+                document.body.classList.remove('mobile-blocked');
+            }
+        });
+
+        // Initialize WebGL Background
+        let scene, camera, renderer, backgroundMesh;
+        let mouse = { x: 0, y: 0 };
+        let targetRotation = { x: 0, y: 0 };
+        let currentRotation = { x: 0, y: 0 };
+        
+        function initWebGL() {
+            const canvas = document.getElementById('webgl-canvas');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: canvas,
+                antialias: true, 
+                alpha: true,
+                powerPreference: "high-performance"
+            });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Load background texture
+            const backgroundTexture = new THREE.TextureLoader().load('assets/images/up_behind.png', (texture) => {
+                const img = texture.image;
+                const aspectRatio = img.width / img.height;
+                
+                // Calculate dimensions to maintain aspect ratio while ensuring coverage
+                // Use viewport aspect ratio to determine best fit
+                const viewportAspect = window.innerWidth / window.innerHeight;
+                
+                let width, height;
+                
+                if (aspectRatio > viewportAspect) {
+                    // Image is wider than viewport - scale based on height
+                    height = 14.44; // Reduced by additional 5% (15.2 * 0.95 = 14.44)
+                    width = height * aspectRatio;
+                } else {
+                    // Image is taller than viewport - scale based on width
+                    width = 20.216; // Reduced by additional 5% (21.28 * 0.95 = 20.216)
+                    height = width / aspectRatio;
+                }
+                
+                backgroundMesh.geometry.dispose();
+                backgroundMesh.geometry = new THREE.PlaneGeometry(width, height);
+            });
+            
+            backgroundTexture.generateMipmaps = false;
+            backgroundTexture.minFilter = THREE.LinearFilter;
+            backgroundTexture.magFilter = THREE.LinearFilter;
+            
+            const backgroundMaterial = new THREE.MeshBasicMaterial({ 
+                map: backgroundTexture, 
+                transparent: true,
+                opacity: 0.4,
+                depthTest: false,
+                depthWrite: false
+            });
+            
+            // Apply purple-blue tint for experiments theme
+            backgroundMaterial.onBeforeCompile = function(shader) {
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    '#include <output_fragment>',
+                    `
+                    #include <output_fragment>
+                    // Apply purple-blue tint for experiments theme
+                    vec3 tintColor = vec3(0.2, 0.15, 0.35); // Purple-blue tint
+                    
+                    gl_FragColor.rgb = gl_FragColor.rgb * tintColor * 2.5;
+                    gl_FragColor.rgb = min(gl_FragColor.rgb, vec3(1.0));
+                    `
+                );
+            };
+            
+            // Create initial geometry - will be updated when texture loads with proper aspect ratio
+            const backgroundGeometry = new THREE.PlaneGeometry(14.44, 8.664); // Reduced by additional 5% (15.2*0.95=14.44, 9.12*0.95=8.664)
+            backgroundMesh = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+            // Position mesh lower to anchor it to bottom of viewport
+            backgroundMesh.position.set(0, -2, -5);
+            backgroundMesh.renderOrder = 50;
+            scene.add(backgroundMesh);
+            
+            camera.position.z = 5;
+            
+            // Mouse movement tracking
+            document.addEventListener('mousemove', (event) => {
+                // Normalize mouse coordinates to -1 to 1 range
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Calculate target rotation based on mouse position
+                targetRotation.x = mouse.y * 0.1; // Vertical rotation
+                targetRotation.y = mouse.x * 0.1; // Horizontal rotation
+            });
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Smooth interpolation for mouse-based movement
+                const lerpFactor = 0.02; // Adjust for smoother/faster response
+                currentRotation.x += (targetRotation.x - currentRotation.x) * lerpFactor;
+                currentRotation.y += (targetRotation.y - currentRotation.y) * lerpFactor;
+                
+                // Apply rotation and subtle movement to background mesh
+                if (backgroundMesh) {
+                    backgroundMesh.rotation.x = currentRotation.x;
+                    backgroundMesh.rotation.y = currentRotation.y;
+                    
+                    // Add subtle position movement based on mouse (reduced range)
+                    // Keep the base Y position anchored to bottom (-2) and only allow small upward movement
+                    backgroundMesh.position.x = currentRotation.y * 0.3; // Reduced horizontal movement
+                    backgroundMesh.position.y = -2 + Math.max(0, -currentRotation.x * 0.2); // Anchor bottom, only move up
+                    
+                    // Add subtle scale variation for depth effect (larger base scale)
+                    const scaleVariation = 1.2 + (Math.abs(currentRotation.x) + Math.abs(currentRotation.y)) * 0.03;
+                    backgroundMesh.scale.set(scaleVariation, scaleVariation, 1);
+                    
+                    // Slight Z-position movement for depth (reduced range)
+                    backgroundMesh.position.z = -5 + (currentRotation.x * 0.1);
+                }
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        
+        // Page Load Animations
+        function initPageAnimations() {
+            // Animate title with enhanced timing
+            setTimeout(() => {
+                const title = document.querySelector('.title-animate');
+                if (title) {
+                    title.classList.add('animate');
+                }
+            }, 200);
+            
+            // Animate other fade-in elements
+            setTimeout(() => {
+                document.querySelectorAll('.fade-in-up').forEach((el, index) => {
+                    setTimeout(() => {
+                        el.classList.add('animate');
+                    }, index * 150);
+                });
+            }, 600);
+            
+            // Header panel animation (slide down)
+            setTimeout(() => {
+                const header = document.querySelector('.header-panel');
+                if (header) {
+                    header.style.transform = 'translateY(-100%)';
+                    header.style.transition = 'transform 0.8s cubic-bezier(0.19, 1, 0.22, 1)';
+                    setTimeout(() => {
+                        header.style.transform = 'translateY(0)';
+                    }, 100);
+                }
+            }, 400);
+        }
+        
+        // Floating Tabs Functionality
+        function initFloatingTabs() {
+            const tabs = document.querySelectorAll('.floating-tab');
+            
+            // Animate tabs in with staggered timing
+            setTimeout(() => {
+                tabs.forEach((tab, index) => {
+                    setTimeout(() => {
+                        tab.classList.add('animate-in');
+                    }, index * 150);
+                });
+            }, 1200); // Start after main content animations
+            
+            // Tab click handlers
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    tab.classList.add('active');
+                    
+                    // Get the tab data attribute
+                    const tabType = tab.dataset.tab;
+                    console.log(`Tab selected: ${tabType}`);
+                    
+                    // Add subtle vibration effect
+                    tab.style.transform = 'translateX(-8px) scale(1.02)';
+                    setTimeout(() => {
+                        tab.style.transform = '';
+                    }, 150);
+                    
+                    // Trigger any additional tab-specific functionality here
+                    handleTabSelection(tabType);
+                });
+            });
+        }
+        
+        // Handle tab selection logic
+        function handleTabSelection(tabType) {
+            // Trigger the popup animation with background image swallow effect
+            showTabPopup(tabType);
+        }
+
+        // Popup Animation Functions
+        function showTabPopup(tabType) {
+            const popup = document.getElementById('tabPopup');
+            const popupTitle = document.getElementById('popupTitle');
+            const popupContent = document.getElementById('popupContent');
+            
+            // Create background image clone for swallow animation
+            createBackgroundImageClone();
+            
+            // Set popup content based on tab type
+            const tabData = getTabContent(tabType);
+            popupTitle.textContent = tabData.title;
+            popupContent.innerHTML = tabData.content;
+            
+            // Show popup with animation
+            setTimeout(() => {
+                popup.classList.add('active');
+            }, 100);
+            
+            // Start background image swallow animation
+            setTimeout(() => {
+                startSwallowAnimation();
+            }, 200);
+        }
+
+        function createBackgroundImageClone() {
+            // Remove existing clone if any
+            const existingClone = document.querySelector('.background-image-clone');
+            if (existingClone) {
+                existingClone.remove();
+            }
+            
+            // Create new background image clone
+            const imageClone = document.createElement('div');
+            imageClone.className = 'background-image-clone';
+            document.body.appendChild(imageClone);
+        }
+
+        function startSwallowAnimation() {
+            const imageClone = document.querySelector('.background-image-clone');
+            if (imageClone) {
+                imageClone.classList.add('swallow');
+                
+                // Remove the clone after animation completes
+                setTimeout(() => {
+                    imageClone.remove();
+                }, 1200);
+            }
+        }
+
+        function getTabContent(tabType) {
+            const contentMap = {
+                'environment': {
+                    title: 'Environment Settings',
+                    content: '<div class="space-y-4"><div class="grid grid-cols-2 gap-4"><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">Lighting</h4></div><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">Skybox</h4></div></div></div>'
+                },
+                'sound': {
+                    title: 'Audio Controls',
+                    content: '<div class="space-y-4"><div class="grid grid-cols-2 gap-4"><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">3D Audio</h4></div><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">Sound Effects</h4></div></div></div>'
+                },
+                'interaction': {
+                    title: 'Interaction Settings',
+                    content: '<div class="space-y-4"><div class="grid grid-cols-2 gap-4"><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">Hand Tracking</h4></div><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">Controllers</h4></div></div></div>'
+                },
+                'ui': {
+                    title: 'UI Configuration',
+                    content: '<div class="space-y-4"><div class="grid grid-cols-2 gap-4"><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">Interface Scale</h4></div><div class="p-4 bg-rgba(248,249,249,0.05) rounded-lg"><h4 class="font-semibold mb-2">Layout</h4></div></div></div>'
+                },
+                'object-models': {
+                    title: '3D Models Library',
+                    content: '<div class="space-y-4"><div class="grid grid-cols-3 gap-3"><div class="p-3 bg-rgba(248,249,249,0.05) rounded-lg text-center"><div class="text-2xl mb-2">🏠</div><p class="text-xs">Architecture</p></div><div class="p-3 bg-rgba(248,249,249,0.05) rounded-lg text-center"><div class="text-2xl mb-2">🪑</div><p class="text-xs">Furniture</p></div><div class="p-3 bg-rgba(248,249,249,0.05) rounded-lg text-center"><div class="text-2xl mb-2">🌳</div><p class="text-xs">Nature</p></div></div></div>'
+                }
+            };
+            
+            return contentMap[tabType] || {
+                title: 'Unknown Tab',
+                content: '<p>Content not found for this tab.</p>'
+            };
+        }
+
+        function hideTabPopup() {
+            const popup = document.getElementById('tabPopup');
+            popup.classList.remove('active');
+        }
+
+        function initPopupControls() {
+            const popupClose = document.getElementById('popupClose');
+            const popupOverlay = document.getElementById('tabPopup');
+            
+            // Close button handler
+            popupClose.addEventListener('click', hideTabPopup);
+            
+            // Click outside to close
+            popupOverlay.addEventListener('click', (e) => {
+                if (e.target === popupOverlay) {
+                    hideTabPopup();
+                }
+            });
+            
+            // Escape key to close
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideTabPopup();
+                }
+            });
+        }
+        
+        // Custom Cursor
+        function initCustomCursor() {
+            const cursorDot = document.getElementById('cursor-dot');
+            const cursorOutline = document.getElementById('cursor-outline');
+            
+            document.addEventListener('mousemove', (e) => {
+                cursorDot.style.left = e.clientX + 'px';
+                cursorDot.style.top = e.clientY + 'px';
+                
+                cursorOutline.style.left = (e.clientX - 12) + 'px';
+                cursorOutline.style.top = (e.clientY - 12) + 'px';
+            });
+            
+            // Interactive elements (including floating tabs)
+            const interactiveElements = document.querySelectorAll('a, button, .experiment-card, .floating-tab');
+            interactiveElements.forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    cursorOutline.style.transform = 'scale(1.5)';
+                    cursorOutline.style.borderColor = 'rgba(248, 249, 249, 0.8)';
+                });
+                
+                el.addEventListener('mouseleave', () => {
+                    cursorOutline.style.transform = 'scale(1)';
+                    cursorOutline.style.borderColor = 'rgba(248, 249, 249, 0.4)';
+                });
+            });
+        }
+        
+        // Resize handler
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                // Update background mesh geometry on resize to maintain proper coverage
+                if (backgroundMesh && backgroundMesh.material.map) {
+                    const texture = backgroundMesh.material.map;
+                    const img = texture.image;
+                    if (img) {
+                        const aspectRatio = img.width / img.height;
+                        const viewportAspect = window.innerWidth / window.innerHeight;
+                        
+                        let width, height;
+                        
+                        if (aspectRatio > viewportAspect) {
+                            height = 14.44; // Reduced by additional 5% (15.2 * 0.95 = 14.44)
+                            width = height * aspectRatio;
+                        } else {
+                            width = 20.216; // Reduced by additional 5% (21.28 * 0.95 = 20.216)
+                            height = width / aspectRatio;
+                        }
+                        
+                        backgroundMesh.geometry.dispose();
+                        backgroundMesh.geometry = new THREE.PlaneGeometry(width, height);
+                    }
+                }
+            }
+        });
+        
+        // Page load and initialization
+        function init() {
+            initWebGL();
+            initPageAnimations();
+            initCustomCursor();
+            initFloatingTabs();
+            initPopupControls();
+            
+            // Fast page load
+            document.body.classList.add('loaded');
+            const preloader = document.getElementById('preloader');
+            preloader.style.opacity = '0';
+            setTimeout(() => preloader.style.display = 'none', 200);
+        }
+        
+        // Fast page transitions
+        function smoothTransition(url) {
+            const transition = document.getElementById('page-transition');
+            
+            // Simple, fast transition
+            transition.style.transform = 'translateX(0)';
+            
+            // Navigate immediately after transition starts
+            setTimeout(() => {
+                window.location.href = url;
+            }, 150);
+        }
+        
+        // Initialize everything when page loads
+        window.addEventListener('load', init);
+        
+        // Add smooth transition to navigation links
+        document.addEventListener('DOMContentLoaded', () => {
+            const navLinks = document.querySelectorAll('a[href]');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    const href = link.getAttribute('href');
+                    if (href && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+                        e.preventDefault();
+                        smoothTransition(href);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

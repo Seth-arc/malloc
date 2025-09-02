@@ -12,6 +12,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Preload experiments page for faster transitions -->
+    <link rel="prefetch" href="experiments.html">
+    <link rel="preload" href="assets/images/up_behind.png" as="image">
     <style>
         :root {
             --cursor-size: 8px;
@@ -26,7 +30,7 @@
             background-color: #3d4753;
             overflow-x: hidden;
             opacity: 0;
-            transition: opacity 1s ease-in-out, background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: opacity 0.3s ease-in-out, background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         body.video-background {
@@ -39,7 +43,15 @@
         body.cursor-hover #cursor-dot { opacity: 0; }
         body.cursor-hover #cursor-outline { width: 40px; height: 40px; background-color: rgba(248, 249, 249, 0.1); border-color: transparent; }
 
-        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #3d4753; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s ease-in-out; }
+        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #3d4753; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s ease-in-out; }
+        
+        /* Page transition overlay */
+        #page-transition { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #3d4753; z-index: 9998; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Enhanced navigation hover effects */
+        .nav-link { position: relative; overflow: hidden; }
+        .nav-link::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(248, 249, 249, 0.1), transparent); transition: left 0.5s ease; z-index: -1; }
+        .nav-link:hover::before { left: 100%; }
         
         #webgl-canvas { position: fixed; top: 0; left: 0; outline: none; z-index: -1; }
         
@@ -77,6 +89,48 @@
         
         /* Firefox Scrollbar */
         html { scrollbar-width: thin; scrollbar-color: #f8f9f9 #3d4753; }
+
+        /* Mobile blocking overlay */
+        #mobile-block {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #3d4753;
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+        }
+
+        #mobile-block h1 {
+            font-size: 32px;
+            font-weight: bold;
+            color: #f8f9f9;
+            margin-bottom: 20px;
+        }
+
+        #mobile-block p {
+            font-size: 18px;
+            color: rgba(248, 249, 249, 0.8);
+            line-height: 1.6;
+            max-width: 500px;
+            margin-bottom: 30px;
+        }
+
+
+
+        body.mobile-blocked {
+            overflow: hidden;
+        }
+
+        body.mobile-blocked #mobile-block {
+            display: flex;
+        }
 
         /* Loading Animations */
         .vr-banner {
@@ -328,6 +382,8 @@
         video::-webkit-media-controls-time-remaining-display {
             color: #f8f9f9;
         }
+        
+
     </style>
 </head>
 <body class="text-[#f8f9f9] antialiased">
@@ -335,12 +391,21 @@
     <div id="cursor-dot"></div>
     <div id="cursor-outline"></div>
 
+    <!-- Mobile Block Overlay -->
+    <div id="mobile-block">
+        <h1>Desktop Only Experience</h1>
+        <p>This VR design platform is optimized for desktop computers and requires a larger screen for the best experience. Please visit us from a desktop or laptop computer.</p>
+    </div>
+
     <div id="preloader">
         <svg class="w-16 h-16 text-meta-blue animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
     </div>
+    
+    <!-- Page Transition Overlay -->
+    <div id="page-transition"></div>
 
     <canvas id="webgl-canvas"></canvas>
 
@@ -357,6 +422,9 @@
                     <button id="about-btn" class="text-2xl font-bold text-[#f8f9f9] hover:text-[#f8f9f9]/80 transition-colors duration-200 tracking-tight">
                         About
                     </button>
+                    <a href="experiments.html" class="nav-link text-2xl font-bold text-[#f8f9f9] hover:text-[#f8f9f9]/80 transition-all duration-300 tracking-tight transform hover:scale-105 hover:translate-x-1">
+                        Experiments
+                    </a>
                 </div>
             </nav>
         </header>
@@ -490,6 +558,7 @@
         </main>
     </div>
 
+
     <!-- About Modal -->
     <div id="about-modal" class="modal">
         <div class="modal-content">
@@ -528,6 +597,39 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Mobile Detection and Blocking
+            function detectMobile() {
+                const userAgent = navigator.userAgent.toLowerCase();
+                const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/.test(userAgent);
+                const isSmallScreen = window.innerWidth < 1024;
+                
+                return isMobile || isSmallScreen;
+            }
+
+            function checkMobileAccess() {
+                if (detectMobile()) {
+                    document.body.classList.add('mobile-blocked');
+                    // Disable all scripts and interactions
+                    return false;
+                }
+                return true;
+            }
+
+            // Check immediately when script loads
+            if (!checkMobileAccess()) {
+                // Stop execution for mobile devices
+                return;
+            }
+
+            // Also check on resize
+            window.addEventListener('resize', () => {
+                if (window.innerWidth < 1024) {
+                    document.body.classList.add('mobile-blocked');
+                } else {
+                    document.body.classList.remove('mobile-blocked');
+                }
+            });
+
             let soundManager, scene, camera, renderer, crystal, particles;
             const mouse = new THREE.Vector2();
 
@@ -560,7 +662,7 @@
                 document.body.classList.add('loaded');
                 const preloader = document.getElementById('preloader');
                 preloader.style.opacity = '0';
-                setTimeout(() => preloader.style.display = 'none', 500);
+                setTimeout(() => preloader.style.display = 'none', 200);
                 
                 // Trigger loading animations sequence
                 triggerLoadingAnimations();
@@ -1167,6 +1269,8 @@
                     }
                 });
                 
+
+                
                                 // Footer
                 const lastUpdated = document.getElementById('last-updated');
                 lastUpdated.textContent = 'Designed and Developed by Sethu Nguna (2025)';
@@ -1567,6 +1671,31 @@
             
             // Initialize without starting audio context (will start on first user interaction)
             init();
+            
+            // Fast page transitions
+            function smoothTransition(url) {
+                const transition = document.getElementById('page-transition');
+                
+                // Simple, fast transition
+                transition.style.transform = 'translateX(0)';
+                
+                // Navigate immediately after transition starts
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 150);
+            }
+            
+            // Add smooth transition to navigation links
+            const navLinks = document.querySelectorAll('a[href]');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    const href = link.getAttribute('href');
+                    if (href && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+                        e.preventDefault();
+                        smoothTransition(href);
+                    }
+                });
+            });
         });
     </script>
 </body>
