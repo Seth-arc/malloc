@@ -1,0 +1,388 @@
+# docker-compose.yml - Production Microservices Architecture
+# Malloc VR MCP Server - Educational Microservices Deployment
+# Implements lines 3098-3197 from Malloc_MCP_Server_Development_Pathway.md
+
+version: '3.8'
+
+services:
+  # Core MCP Gateway Service
+  mcp-gateway:
+    build: 
+      context: ./src/gateway
+      dockerfile: Dockerfile
+    image: malloc-vr/mcp-gateway:latest
+    ports:
+      - "8080:8080"
+      - "8443:8443"  # HTTPS for educational security
+    environment:
+      - ENVIRONMENT=production
+      - LOAD_BALANCER_STRATEGY=educational_affinity
+      - FERPA_COMPLIANCE_MODE=strict
+      - VR_OPTIMIZATION_LEVEL=quest3
+      - SPATIAL_PRECISION_TOLERANCE=0.0001
+    depends_on:
+      - learner-service
+      - knowledge-service
+      - assessment-service
+      - engagement-service
+      - transition-service
+      - postgresql
+      - redis-cluster
+    volumes:
+      - ./logs/gateway:/app/logs
+      - ./certs:/app/certs:ro
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Learner Model Microservice (∩)
+  learner-service:
+    build:
+      context: ./src/learning
+      dockerfile: Dockerfile.learner
+    image: malloc-vr/learner-service:latest
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    environment:
+      - SERVICE_NAME=learner-model
+      - DB_CONNECTION=postgresql://educational_user:${DB_PASSWORD}@postgresql:5432/learner_profiles
+      - REDIS_URL=redis://redis-cluster:6379
+      - FERPA_COMPLIANCE_LEVEL=STRICT
+      - LEARNING_MODEL_WEIGHT_RANGE=0.25-0.40
+      - SPATIAL_PRECISION_REQUIRED=0.0001
+      - VR_PLATFORM_TARGET=quest3
+      - PERFORMANCE_TARGET_MS=100
+    volumes:
+      - ./logs/learner:/app/logs
+      - learner_data:/app/data
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Knowledge Model Microservice (∆)
+  knowledge-service:
+    build:
+      context: ./src/learning
+      dockerfile: Dockerfile.knowledge
+    image: malloc-vr/knowledge-service:latest
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+    volumes:
+      - blender-assets:/app/blender_assets
+      - ./logs/knowledge:/app/logs
+      - knowledge_data:/app/data
+    environment:
+      - SERVICE_NAME=knowledge-model
+      - BLENDER_VERSION=4.4+
+      - ASSET_OPTIMIZATION_LEVEL=quest3
+      - SPATIAL_PRECISION_TOLERANCE=0.0001
+      - KNOWLEDGE_MODEL_WEIGHT_RANGE=0.20-0.35
+      - CURRICULUM_MAPPING_ENABLED=true
+      - COMPETENCY_TRACKING_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Engagement Tracking Microservice (E)
+  engagement-service:
+    build:
+      context: ./src/learning
+      dockerfile: Dockerfile.engagement
+    image: malloc-vr/engagement-service:latest
+    deploy:
+      replicas: 4  # High throughput for VR interactions
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.75'
+    environment:
+      - SERVICE_NAME=engagement-model
+      - VR_PLATFORM=quest3
+      - REALTIME_PROCESSING=enabled
+      - MAX_LATENCY_MS=25
+      - ENGAGEMENT_MODEL_WEIGHT_RANGE=0.15-0.30
+      - VR_INTERACTION_TRACKING=enabled
+      - ATTENTION_METRICS_ENABLED=true
+      - SPATIAL_TRACKING_PRECISION=0.0001
+    volumes:
+      - ./logs/engagement:/app/logs
+      - engagement_data:/app/data
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8002/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # Assessment Engine Microservice (A)
+  assessment-service:
+    build:
+      context: ./src/learning
+      dockerfile: Dockerfile.assessment
+    image: malloc-vr/assessment-service:latest
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.75'
+    environment:
+      - SERVICE_NAME=assessment-model
+      - ASSESSMENT_TYPES=formative,authentic,competency
+      - SPATIAL_PRECISION_TOLERANCE=0.0001
+      - ASSESSMENT_MODEL_WEIGHT_RANGE=0.20-0.35
+      - COMPETENCY_EVALUATION_ENABLED=true
+      - ADAPTIVE_TESTING_ENABLED=true
+      - FERPA_ASSESSMENT_PROTECTION=strict
+    volumes:
+      - ./logs/assessment:/app/logs
+      - assessment_data:/app/data
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8003/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Transition Engine Microservice (∂)
+  transition-service:
+    build:
+      context: ./src/learning
+      dockerfile: Dockerfile.transition
+    image: malloc-vr/transition-service:latest
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    environment:
+      - SERVICE_NAME=transition-model
+      - EQUATION_COMPUTATION_TARGET_MS=10
+      - LEARNING_EVENTS=onboarding,introduction,practice,application,mastery
+      - MATHEMATICAL_EQUATION_ENABLED=true
+      - DYNAMIC_WEIGHTING_ENABLED=true
+      - REAL_TIME_ADAPTATION_ENABLED=true
+    volumes:
+      - ./logs/transition:/app/logs
+      - transition_data:/app/data
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8004/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Educational Database
+  postgresql:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=malloc_vr_learning
+      - POSTGRES_USER=educational_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-secure_educational_password}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./logs/postgresql:/var/log/postgresql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U educational_user -d malloc_vr_learning"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis Cluster for Educational Caching
+  redis-cluster:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-educational_cache_password}
+    volumes:
+      - redis_data:/data
+      - ./logs/redis:/var/log/redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Educational Analytics Service
+  analytics-service:
+    build:
+      context: ./src/production
+      dockerfile: Dockerfile.analytics
+    image: malloc-vr/analytics-service:latest
+    environment:
+      - SERVICE_NAME=educational-analytics
+      - ANALYTICS_ENGINE=predictive
+      - ML_MODEL_CACHE_SIZE=1000
+      - EDUCATIONAL_EFFECTIVENESS_THRESHOLD=0.85
+      - LEARNING_OUTCOME_TRACKING=enabled
+      - SPATIAL_PRECISION_ANALYTICS=enabled
+      - VR_PERFORMANCE_ANALYTICS=enabled
+    volumes:
+      - ./logs/analytics:/app/logs
+      - analytics_data:/app/data
+      - ml_models:/app/models
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    depends_on:
+      - postgresql
+      - redis-cluster
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8005/health')"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+
+  # WebSocket Communication Service
+  websocket-service:
+    build:
+      context: ./src/websocket
+      dockerfile: Dockerfile
+    image: malloc-vr/websocket-service:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVICE_NAME=websocket-communication
+      - WEBSOCKET_MAX_CONNECTIONS=1000
+      - REAL_TIME_LATENCY_TARGET_MS=25
+      - VR_STREAMING_ENABLED=true
+      - EDUCATIONAL_SESSION_MANAGEMENT=enabled
+    volumes:
+      - ./logs/websocket:/app/logs
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Production Health Monitoring
+  health-monitor:
+    build:
+      context: ./src/production
+      dockerfile: Dockerfile.health
+    image: malloc-vr/health-monitor:latest
+    environment:
+      - MONITORING_INTERVAL_SECONDS=30
+      - EDUCATIONAL_METRICS_ENABLED=true
+      - VR_PERFORMANCE_MONITORING=enabled
+      - FERPA_COMPLIANCE_MONITORING=enabled
+      - ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL}
+    volumes:
+      - ./logs/health:/app/logs
+      - health_data:/app/data
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    depends_on:
+      - mcp-gateway
+      - postgresql
+      - redis-cluster
+
+  # Blender Integration Service
+  blender-service:
+    build:
+      context: ./src/blender
+      dockerfile: Dockerfile
+    image: malloc-vr/blender-service:latest
+    environment:
+      - BLENDER_VERSION=4.4+
+      - VR_OPTIMIZATION_TARGET=quest3
+      - SPATIAL_PRECISION_VALIDATION=0.0001
+      - EDUCATIONAL_CONTENT_CREATION=enabled
+      - PYTHON_API_INTEGRATION=enabled
+    volumes:
+      - blender-assets:/app/assets
+      - ./logs/blender:/app/logs
+      - blender_scenes:/app/scenes
+    restart: unless-stopped
+    networks:
+      - malloc-vr-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import bpy; print('Blender OK')"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+
+# Network Configuration
+networks:
+  malloc-vr-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Persistent Volume Configuration
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  blender_assets:
+    driver: local
+  learner_data:
+    driver: local
+  knowledge_data:
+    driver: local
+  engagement_data:
+    driver: local
+  assessment_data:
+    driver: local
+  transition_data:
+    driver: local
+  analytics_data:
+    driver: local
+  health_data:
+    driver: local
+  blender_scenes:
+    driver: local
+  ml_models:
+    driver: local
+
+# Configuration for production deployment
+# Use docker-compose -f docker-compose.yml -f docker-compose.prod.yml up for production

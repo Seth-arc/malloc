@@ -264,7 +264,7 @@ The system guides learners through five progressive learning events:
 }
 ```
 
-## Contributing
+## Contributing 
 
 We welcome contributions to the Malloc VR MCP Server! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
 

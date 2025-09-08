@@ -1,0 +1,448 @@
+# Kubernetes Production Deployment Configuration
+# Malloc VR MCP Server - Educational Microservices Production Deployment
+# Implements production-ready deployment with scaling and monitoring
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: malloc-vr-production
+  labels:
+    environment: production
+    system: educational-vr-mcp
+
+---
+# ConfigMap for Educational Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: educational-config
+  namespace: malloc-vr-production
+data:
+  # Educational Performance Targets
+  LEARNING_MODEL_RESPONSE_TARGET_MS: "100"
+  ENGAGEMENT_PROCESSING_TARGET_MS: "50"
+  ASSESSMENT_EVALUATION_TARGET_MS: "200"
+  TRANSITION_DECISION_TARGET_MS: "500"
+  INTEGRATION_COMPUTATION_TARGET_MS: "10"
+  
+  # VR Optimization
+  VR_PLATFORM_TARGET: "quest3"
+  SPATIAL_PRECISION_TOLERANCE: "0.0001"
+  VR_PERFORMANCE_TARGET_FPS: "72"
+  
+  # Educational Standards
+  FERPA_COMPLIANCE_LEVEL: "strict"
+  LEARNING_CONTINUITY_PRIORITY: "high"
+  ASSESSMENT_INTEGRITY_ENFORCEMENT: "enabled"
+
+---
+# Secret for Database and Redis
+apiVersion: v1
+kind: Secret
+metadata:
+  name: educational-secrets
+  namespace: malloc-vr-production
+type: Opaque
+data:
+  # Base64 encoded values (replace with actual encoded secrets)
+  DB_PASSWORD: ZWR1Y2F0aW9uYWxfcGFzc3dvcmQ=  # educational_password
+  REDIS_PASSWORD: cmVkaXNfZWR1Y2F0aW9uYWxfcGFzc3dvcmQ=  # redis_educational_password
+  JWT_SECRET: and1dF9lZHVjYXRpb25hbF9zZWNyZXRfa2V5  # jwt_educational_secret_key
+
+---
+# MCP Gateway Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-gateway
+  namespace: malloc-vr-production
+  labels:
+    app: mcp-gateway
+    component: api-gateway
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mcp-gateway
+  template:
+    metadata:
+      labels:
+        app: mcp-gateway
+        component: api-gateway
+    spec:
+      containers:
+      - name: mcp-gateway
+        image: malloc-vr/mcp-gateway:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 8443
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOAD_BALANCER_STRATEGY
+          value: "educational_affinity"
+        - name: FERPA_COMPLIANCE_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: educational-config
+              key: FERPA_COMPLIANCE_LEVEL
+        - name: VR_OPTIMIZATION_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: educational-config
+              key: VR_PLATFORM_TARGET
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+# MCP Gateway Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-gateway-service
+  namespace: malloc-vr-production
+spec:
+  selector:
+    app: mcp-gateway
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: https
+    port: 443
+    targetPort: 8443
+  type: LoadBalancer
+
+---
+# Learner Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: learner-service
+  namespace: malloc-vr-production
+  labels:
+    app: learner-service
+    component: learning-model
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: learner-service
+  template:
+    metadata:
+      labels:
+        app: learner-service
+        component: learning-model
+    spec:
+      containers:
+      - name: learner-service
+        image: malloc-vr/learner-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: SERVICE_NAME
+          value: "learner-model"
+        - name: DB_CONNECTION
+          value: "postgresql://educational_user:$(DB_PASSWORD)@postgresql:5432/learner_profiles"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: educational-secrets
+              key: DB_PASSWORD
+        - name: FERPA_COMPLIANCE_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: educational-config
+              key: FERPA_COMPLIANCE_LEVEL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+---
+# Assessment Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assessment-service
+  namespace: malloc-vr-production
+  labels:
+    app: assessment-service
+    component: learning-model
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assessment-service
+  template:
+    metadata:
+      labels:
+        app: assessment-service
+        component: learning-model
+    spec:
+      containers:
+      - name: assessment-service
+        image: malloc-vr/assessment-service:latest
+        ports:
+        - containerPort: 8003
+        env:
+        - name: SERVICE_NAME
+          value: "assessment-model"
+        - name: ASSESSMENT_TYPES
+          value: "formative,authentic,competency"
+        - name: SPATIAL_PRECISION_TOLERANCE
+          valueFrom:
+            configMapKeyRef:
+              name: educational-config
+              key: SPATIAL_PRECISION_TOLERANCE
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "750m"
+
+---
+# PostgreSQL Database
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: malloc-vr-production
+spec:
+  serviceName: postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+      - name: postgresql
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "malloc_vr_learning"
+        - name: POSTGRES_USER
+          value: "educational_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: educational-secrets
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 100Gi
+
+---
+# Redis Cache
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cluster
+  namespace: malloc-vr-production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-cluster
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command: ["redis-server", "--appendonly", "yes", "--requirepass", "$(REDIS_PASSWORD)"]
+        ports:
+        - containerPort: 6379
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: educational-secrets
+              key: REDIS_PASSWORD
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+# Health Monitoring Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: health-monitor
+  namespace: malloc-vr-production
+  labels:
+    app: health-monitor
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: health-monitor
+  template:
+    metadata:
+      labels:
+        app: health-monitor
+        component: monitoring
+    spec:
+      containers:
+      - name: health-monitor
+        image: malloc-vr/health-monitor:latest
+        ports:
+        - containerPort: 8090
+        env:
+        - name: MONITORING_INTERVAL_SECONDS
+          value: "30"
+        - name: EDUCATIONAL_METRICS_ENABLED
+          value: "true"
+        - name: VR_PERFORMANCE_MONITORING
+          value: "enabled"
+        - name: FERPA_COMPLIANCE_MONITORING
+          value: "enabled"
+        - name: VR_PERFORMANCE_TARGET_FPS
+          valueFrom:
+            configMapKeyRef:
+              name: educational-config
+              key: VR_PERFORMANCE_TARGET_FPS
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+# Horizontal Pod Autoscaler for Gateway
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mcp-gateway-hpa
+  namespace: malloc-vr-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mcp-gateway
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Network Policy for Educational Data Protection
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: educational-data-protection
+  namespace: malloc-vr-production
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: malloc-vr-production
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: malloc-vr-production
+  # Allow external educational service communication
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+---
+# Resource Quota for Educational Services
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: educational-resource-quota
+  namespace: malloc-vr-production
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "2"
