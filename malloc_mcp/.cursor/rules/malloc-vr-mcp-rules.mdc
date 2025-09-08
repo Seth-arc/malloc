@@ -1,0 +1,574 @@
+---
+alwaysApply: true
+---
+
+# Malloc VR MCP Server - Cursor Rules
+# Enterprise-grade Educational VR MCP Server Development Standards
+# Based on: docs/Malloc_MCP_Server_Development_Pathway.md
+
+## Project Overview
+
+This is the **Malloc VR MCP (Model Context Protocol) Server** - an advanced educational learning system implementing real-time adaptive VR learning experiences with mathematical model computation.
+
+### Core Features
+- **Real-time Learning Adaptation** with mathematical model computation (∂(t+1) = ∂(t) + α · Δ(∩(t), ∆(t), E(t), A(t)) + β · ε(t))
+- **Five Learning Model APIs**: Learner (∩), Knowledge (∆), Engagement (E), Assessment (A), Transition (∂)
+- **WebSocket Communication Protocol** for real-time educational interactions
+- **FERPA-Compliant Security** with educational data protection
+- **Blender 4.4+ Integration** with Python API optimization for Quest 3 VR
+
+## Technology Stack Requirements
+
+### Primary Technologies
+- **Python 3.11+** - Core server implementation
+- **FastAPI** - Web framework with async support
+- **WebSocket** - Real-time communication
+- **SQLite** (development) / **PostgreSQL** (production) - Database
+- **Blender 4.4+** - VR content creation and Python API integration
+- **Quest 3 VR** - Target VR platform with <72fps performance requirements
+
+### MCP Protocol
+- Full MCP (Model Context Protocol) compliance
+- Tool registration system for learning model endpoints
+- Real-time adaptation command processing
+- Educational security extensions
+
+## Code Quality Standards
+
+### ESLint Configuration Requirements
+```javascript
+{
+  "rules": {
+    "educational-vr/require-educational-context": "error",
+    "educational-vr/quest3-performance-annotation": "warn", 
+    "educational-vr/spatial-precision-validation": "error",
+    "@typescript-eslint/explicit-function-return-type": "error",
+    "jsdoc/require-jsdoc": "error",
+    "max-lines-per-function": ["error", {"max": 50}],
+    "complexity": ["error", 10]
+  }
+}
+```
+
+### TypeScript Standards
+- **Strict Mode**: Always enable TypeScript strict mode
+- **Explicit Return Types**: All functions must have explicit return type annotations
+- **Educational Context**: Every educational function must include educational impact documentation
+
+### Code Style Requirements
+- **PascalCase** for classes with educational suffixes (Manager, Service, Controller, etc.)
+- **camelCase** for functions and variables
+- **SCREAMING_SNAKE_CASE** for constants
+- **Maximum function length**: 50 lines
+- **Maximum cyclomatic complexity**: 10 for infrastructure, 8 for educational algorithms
+
+## Documentation Standards
+
+### JSDoc Requirements
+- **100% coverage** for all public APIs and educational functions
+- **Educational Impact Statement** required for all educational functions
+- **Performance Impact Statement** required for Quest 3 critical functions
+- **Parameter and return type documentation** for all public methods
+- **Usage examples** for complex educational algorithms
+
+### Documentation Template
+```javascript
+/**
+ * [Function description with educational context]
+ * 
+ * Educational Impact:
+ * [How this function contributes to learning outcomes]
+ * 
+ * Performance Requirements:
+ * - Quest 3 VR: [Performance requirements]
+ * - Response time: [Timing requirements]
+ * - Memory usage: [Memory constraints]
+ * 
+ * @param {Type} paramName - [Parameter description]
+ * @returns {Type} [Return value description]
+ * @throws {ErrorType} [Error conditions]
+ * 
+ * @example
+ * [Usage example]
+ */
+```
+
+## Performance Requirements
+
+### Quest 3 VR Optimization
+- **Minimum 72fps** maintained during all operations
+- **Memory usage**: <100MB for basic server operations
+- **Response latency**: <100ms for learning model updates
+- **Spatial precision**: 0.1mm tolerance for educational objects
+- **Encryption/decryption**: <50ms for learner data
+
+### Real-time Requirements
+- **WebSocket latency**: <25ms for real-time adaptation
+- **Data streaming**: 5-second intervals for continuous learning data
+- **Concurrent connections**: Support 50+ simultaneous learners
+- **Mathematical computation**: <100ms for learning equation processing
+
+## Testing Standards
+
+### Coverage Requirements
+- **>95% test coverage** for educational components
+- **>90% test coverage** for infrastructure components
+- **Educational scenario validation** in all test cases
+- **Quest 3 performance metrics validation** in tests
+- **Spatial precision assertions** with 0.1mm tolerance
+
+### Test Types Required
+- **Unit Tests**: Individual component validation
+- **Integration Tests**: End-to-end learning model processing
+- **Performance Tests**: Quest 3 VR performance validation under load
+- **Educational Tests**: Learning effectiveness measurement validation
+- **Security Tests**: FERPA compliance validation
+
+## Security Requirements
+
+### FERPA Compliance
+- **Educational data protection** for all learner information
+- **Secure data transmission** with encryption
+- **Access control** with role-based permissions
+- **Audit logging** for all educational data access
+- **Data retention policies** following educational standards
+
+### Authentication & Authorization
+- **JWT-based authentication** for educational sessions
+- **Role-based access control** (Learner, Educator, Administrator)
+- **Session management** with educational context
+- **API rate limiting** to prevent abuse
+
+## File Organization
+
+### Project Structure
+```
+src/
+├── mcp/                    # MCP protocol implementation
+├── learning/               # Learning model APIs (∩, ∆, E, A, ∂)
+├── websocket/              # Real-time communication
+├── security/               # FERPA-compliant security
+├── blender/                # Blender 4.4+ integration
+├── utils/                  # Utility functions
+└── tests/                  # Test suites
+
+docs/
+├── progress_reports/       # Phase completion reports
+├── specifications/         # Technical specifications
+└── api/                    # API documentation
+```
+
+### Naming Conventions
+- **Files**: `kebab-case.ts` for modules, `PascalCase.ts` for classes
+- **Directories**: `kebab-case` for all directories
+- **Test files**: `*.test.ts` or `*.spec.ts`
+- **Configuration files**: Follow standard conventions (`.eslintrc.cjs`, `tsconfig.json`)
+
+## Development Workflow
+
+### Phase-Based Development
+The project follows a 5-phase development approach:
+1. **Phase 1**: MCP Foundation Architecture
+2. **Phase 2**: Learning Model APIs Implementation
+3. **Phase 3**: Real-time Mathematical Integration
+4. **Phase 4**: WebSocket Communication Protocol
+5. **Phase 5**: Production Deployment
+
+### Progress Reporting
+- **Mandatory progress reports** after each phase completion
+- **Reference previous phase reports** before starting new phases
+- **Progress report location**: `docs/progress_reports/Phase_X_[Name]_Progress.md`
+
+### Context Integration Requirements
+- **Always reference** `docs/malloc_vr_mcp_server_specification.md` with exact line numbers
+- **Maintain performance awareness** per Quest 3 requirements
+- **Preserve educational context** in all implementations
+
+## Educational Context Requirements
+
+### Learning Model Integration
+- **Learner Model (∩)**: Demographics, preferences, progress tracking
+- **Knowledge Model (∆)**: Curriculum structure, competency mapping
+- **Engagement Model (E)**: VR interaction tracking, attention metrics
+- **Assessment Model (A)**: Competency-based evaluation, adaptive testing
+- **Transition Model (∂)**: Learning progression decisions, path optimization
+
+### Mathematical Foundation
+All educational functions must implement or support the core learning equation:
+```
+∂(t+1) = ∂(t) + α · Δ(∩(t), ∆(t), E(t), A(t)) + β · ε(t)
+```
+
+### Educational Effectiveness
+- **Learning outcomes improvement** through system use
+- **Adaptive learning paths** based on real-time data
+- **Spatial learning validation** for VR environments
+- **Collaborative learning support** for multiple learners
+
+## Error Handling
+
+### Educational Context Error Handling
+- **Graceful degradation** during VR learning sessions
+- **Learning continuity** maintained during system failures
+- **Educational data integrity** protection during errors
+- **User-friendly error messages** appropriate for educational context
+
+### Performance Error Handling
+- **Quest 3 performance threshold** monitoring and alerts
+- **Automatic performance optimization** when thresholds approached
+- **Memory management** with educational session priority
+- **Real-time adaptation** failure recovery
+
+## Blender Integration Requirements
+
+### Blender 4.4+ Compatibility
+- **Python API integration** with spatial precision validation
+- **Educational metadata embedding** in 3D objects
+- **Quest 3 optimization** for VR content
+- **Real-time scene updates** for adaptive learning
+
+### Spatial Precision
+- **0.1mm tolerance** for educational object positioning
+- **Sub-millimeter precision** for detailed educational content
+- **Spatial validation** for all 3D educational interactions
+
+## MCP Protocol Compliance
+
+### Tool Registration
+- **Educational tool endpoints** registered in MCP system
+- **Learning model APIs** exposed as MCP tools
+- **Real-time adaptation commands** available through MCP
+- **Educational metadata** included in all tool responses
+
+### Protocol Validation
+- **MCP specification adherence** at each development phase
+- **Educational extensions** properly documented
+- **Performance benchmarking** against MCP requirements
+- **Protocol compliance testing** in CI/CD pipeline
+
+## AI Assistant Guidelines
+
+When working on this project:
+
+1. **Always prioritize educational context** in all implementations
+2. **Reference specific line numbers** from specification documents
+3. **Include performance annotations** for Quest 3 VR requirements
+4. **Validate FERPA compliance** in all educational data handling
+5. **Implement mathematical learning equation** where applicable
+6. **Follow phase-based development** approach strictly
+7. **Create comprehensive documentation** with educational impact statements
+8. **Ensure real-time performance** meets specified thresholds
+9. **Maintain spatial precision** for VR educational content
+10. **Test educational effectiveness** alongside technical functionality
+
+## Prohibited Practices
+
+- **Never bypass** FERPA compliance requirements
+- **Never compromise** Quest 3 VR performance standards
+- **Never implement** educational features without mathematical foundation
+- **Never skip** progress report creation after phase completion
+- **Never ignore** spatial precision requirements for educational content
+- **Never create** educational functions without impact documentation
+- **Never deploy** without comprehensive testing coverage
+- **Never hardcode** educational parameters without adaptive mechanisms
+
+## Quality Gates
+
+All code must pass:
+- ✅ ESLint educational-vr plugin validation
+- ✅ TypeScript strict mode compilation
+- ✅ JSDoc documentation coverage >95%
+- ✅ Test coverage >90% (>95% for educational components)
+- ✅ Quest 3 performance validation
+- ✅ FERPA compliance verification
+- ✅ Educational context validation
+- ✅ Spatial precision testing
+- ✅ MCP protocol compliance testing
+- ✅ Real-time performance benchmarking
+
+Remember: This is an enterprise-grade educational VR system that will impact real learning outcomes. Every line of code should reflect this responsibility and maintain the highest standards of quality, performance, and educational effectiveness.
+# Malloc VR MCP Server - Cursor Rules
+# Enterprise-grade Educational VR MCP Server Development Standards
+# Based on: docs/Malloc_MCP_Server_Development_Pathway.md
+
+## Project Overview
+
+This is the **Malloc VR MCP (Model Context Protocol) Server** - an advanced educational learning system implementing real-time adaptive VR learning experiences with mathematical model computation.
+
+### Core Features
+- **Real-time Learning Adaptation** with mathematical model computation (∂(t+1) = ∂(t) + α · Δ(∩(t), ∆(t), E(t), A(t)) + β · ε(t))
+- **Five Learning Model APIs**: Learner (∩), Knowledge (∆), Engagement (E), Assessment (A), Transition (∂)
+- **WebSocket Communication Protocol** for real-time educational interactions
+- **FERPA-Compliant Security** with educational data protection
+- **Blender 4.4+ Integration** with Python API optimization for Quest 3 VR
+
+## Technology Stack Requirements
+
+### Primary Technologies
+- **Python 3.11+** - Core server implementation
+- **FastAPI** - Web framework with async support
+- **WebSocket** - Real-time communication
+- **SQLite** (development) / **PostgreSQL** (production) - Database
+- **Blender 4.4+** - VR content creation and Python API integration
+- **Quest 3 VR** - Target VR platform with <72fps performance requirements
+
+### MCP Protocol
+- Full MCP (Model Context Protocol) compliance
+- Tool registration system for learning model endpoints
+- Real-time adaptation command processing
+- Educational security extensions
+
+## Code Quality Standards
+
+### ESLint Configuration Requirements
+```javascript
+{
+  "rules": {
+    "educational-vr/require-educational-context": "error",
+    "educational-vr/quest3-performance-annotation": "warn", 
+    "educational-vr/spatial-precision-validation": "error",
+    "@typescript-eslint/explicit-function-return-type": "error",
+    "jsdoc/require-jsdoc": "error",
+    "max-lines-per-function": ["error", {"max": 50}],
+    "complexity": ["error", 10]
+  }
+}
+```
+
+### TypeScript Standards
+- **Strict Mode**: Always enable TypeScript strict mode
+- **Explicit Return Types**: All functions must have explicit return type annotations
+- **Educational Context**: Every educational function must include educational impact documentation
+
+### Code Style Requirements
+- **PascalCase** for classes with educational suffixes (Manager, Service, Controller, etc.)
+- **camelCase** for functions and variables
+- **SCREAMING_SNAKE_CASE** for constants
+- **Maximum function length**: 50 lines
+- **Maximum cyclomatic complexity**: 10 for infrastructure, 8 for educational algorithms
+
+## Documentation Standards
+
+### JSDoc Requirements
+- **100% coverage** for all public APIs and educational functions
+- **Educational Impact Statement** required for all educational functions
+- **Performance Impact Statement** required for Quest 3 critical functions
+- **Parameter and return type documentation** for all public methods
+- **Usage examples** for complex educational algorithms
+
+### Documentation Template
+```javascript
+/**
+ * [Function description with educational context]
+ * 
+ * Educational Impact:
+ * [How this function contributes to learning outcomes]
+ * 
+ * Performance Requirements:
+ * - Quest 3 VR: [Performance requirements]
+ * - Response time: [Timing requirements]
+ * - Memory usage: [Memory constraints]
+ * 
+ * @param {Type} paramName - [Parameter description]
+ * @returns {Type} [Return value description]
+ * @throws {ErrorType} [Error conditions]
+ * 
+ * @example
+ * [Usage example]
+ */
+```
+
+## Performance Requirements
+
+### Quest 3 VR Optimization
+- **Minimum 72fps** maintained during all operations
+- **Memory usage**: <100MB for basic server operations
+- **Response latency**: <100ms for learning model updates
+- **Spatial precision**: 0.1mm tolerance for educational objects
+- **Encryption/decryption**: <50ms for learner data
+
+### Real-time Requirements
+- **WebSocket latency**: <25ms for real-time adaptation
+- **Data streaming**: 5-second intervals for continuous learning data
+- **Concurrent connections**: Support 50+ simultaneous learners
+- **Mathematical computation**: <100ms for learning equation processing
+
+## Testing Standards
+
+### Coverage Requirements
+- **>95% test coverage** for educational components
+- **>90% test coverage** for infrastructure components
+- **Educational scenario validation** in all test cases
+- **Quest 3 performance metrics validation** in tests
+- **Spatial precision assertions** with 0.1mm tolerance
+
+### Test Types Required
+- **Unit Tests**: Individual component validation
+- **Integration Tests**: End-to-end learning model processing
+- **Performance Tests**: Quest 3 VR performance validation under load
+- **Educational Tests**: Learning effectiveness measurement validation
+- **Security Tests**: FERPA compliance validation
+
+## Security Requirements
+
+### FERPA Compliance
+- **Educational data protection** for all learner information
+- **Secure data transmission** with encryption
+- **Access control** with role-based permissions
+- **Audit logging** for all educational data access
+- **Data retention policies** following educational standards
+
+### Authentication & Authorization
+- **JWT-based authentication** for educational sessions
+- **Role-based access control** (Learner, Educator, Administrator)
+- **Session management** with educational context
+- **API rate limiting** to prevent abuse
+
+## File Organization
+
+### Project Structure
+```
+src/
+├── mcp/                    # MCP protocol implementation
+├── learning/               # Learning model APIs (∩, ∆, E, A, ∂)
+├── websocket/              # Real-time communication
+├── security/               # FERPA-compliant security
+├── blender/                # Blender 4.4+ integration
+├── utils/                  # Utility functions
+└── tests/                  # Test suites
+
+docs/
+├── progress_reports/       # Phase completion reports
+├── specifications/         # Technical specifications
+└── api/                    # API documentation
+```
+
+### Naming Conventions
+- **Files**: `kebab-case.ts` for modules, `PascalCase.ts` for classes
+- **Directories**: `kebab-case` for all directories
+- **Test files**: `*.test.ts` or `*.spec.ts`
+- **Configuration files**: Follow standard conventions (`.eslintrc.cjs`, `tsconfig.json`)
+
+## Development Workflow
+
+### Phase-Based Development
+The project follows a 5-phase development approach:
+1. **Phase 1**: MCP Foundation Architecture
+2. **Phase 2**: Learning Model APIs Implementation
+3. **Phase 3**: Real-time Mathematical Integration
+4. **Phase 4**: WebSocket Communication Protocol
+5. **Phase 5**: Production Deployment
+
+### Progress Reporting
+- **Mandatory progress reports** after each phase completion
+- **Reference previous phase reports** before starting new phases
+- **Progress report location**: `docs/progress_reports/Phase_X_[Name]_Progress.md`
+
+### Context Integration Requirements
+- **Always reference** `docs/malloc_vr_mcp_server_specification.md` with exact line numbers
+- **Maintain performance awareness** per Quest 3 requirements
+- **Preserve educational context** in all implementations
+
+## Educational Context Requirements
+
+### Learning Model Integration
+- **Learner Model (∩)**: Demographics, preferences, progress tracking
+- **Knowledge Model (∆)**: Curriculum structure, competency mapping
+- **Engagement Model (E)**: VR interaction tracking, attention metrics
+- **Assessment Model (A)**: Competency-based evaluation, adaptive testing
+- **Transition Model (∂)**: Learning progression decisions, path optimization
+
+### Mathematical Foundation
+All educational functions must implement or support the core learning equation:
+```
+∂(t+1) = ∂(t) + α · Δ(∩(t), ∆(t), E(t), A(t)) + β · ε(t)
+```
+
+### Educational Effectiveness
+- **Learning outcomes improvement** through system use
+- **Adaptive learning paths** based on real-time data
+- **Spatial learning validation** for VR environments
+- **Collaborative learning support** for multiple learners
+
+## Error Handling
+
+### Educational Context Error Handling
+- **Graceful degradation** during VR learning sessions
+- **Learning continuity** maintained during system failures
+- **Educational data integrity** protection during errors
+- **User-friendly error messages** appropriate for educational context
+
+### Performance Error Handling
+- **Quest 3 performance threshold** monitoring and alerts
+- **Automatic performance optimization** when thresholds approached
+- **Memory management** with educational session priority
+- **Real-time adaptation** failure recovery
+
+## Blender Integration Requirements
+
+### Blender 4.4+ Compatibility
+- **Python API integration** with spatial precision validation
+- **Educational metadata embedding** in 3D objects
+- **Quest 3 optimization** for VR content
+- **Real-time scene updates** for adaptive learning
+
+### Spatial Precision
+- **0.1mm tolerance** for educational object positioning
+- **Sub-millimeter precision** for detailed educational content
+- **Spatial validation** for all 3D educational interactions
+
+## MCP Protocol Compliance
+
+### Tool Registration
+- **Educational tool endpoints** registered in MCP system
+- **Learning model APIs** exposed as MCP tools
+- **Real-time adaptation commands** available through MCP
+- **Educational metadata** included in all tool responses
+
+### Protocol Validation
+- **MCP specification adherence** at each development phase
+- **Educational extensions** properly documented
+- **Performance benchmarking** against MCP requirements
+- **Protocol compliance testing** in CI/CD pipeline
+
+## AI Assistant Guidelines
+
+When working on this project:
+
+1. **Always prioritize educational context** in all implementations
+2. **Reference specific line numbers** from specification documents
+3. **Include performance annotations** for Quest 3 VR requirements
+4. **Validate FERPA compliance** in all educational data handling
+5. **Implement mathematical learning equation** where applicable
+6. **Follow phase-based development** approach strictly
+7. **Create comprehensive documentation** with educational impact statements
+8. **Ensure real-time performance** meets specified thresholds
+9. **Maintain spatial precision** for VR educational content
+10. **Test educational effectiveness** alongside technical functionality
+
+## Prohibited Practices
+
+- **Never bypass** FERPA compliance requirements
+- **Never compromise** Quest 3 VR performance standards
+- **Never implement** educational features without mathematical foundation
+- **Never skip** progress report creation after phase completion
+- **Never ignore** spatial precision requirements for educational content
+- **Never create** educational functions without impact documentation
+- **Never deploy** without comprehensive testing coverage
+- **Never hardcode** educational parameters without adaptive mechanisms
+
+## Quality Gates
+
+All code must pass:
+- ✅ ESLint educational-vr plugin validation
+- ✅ TypeScript strict mode compilation
+- ✅ JSDoc documentation coverage >95%
+- ✅ Test coverage >90% (>95% for educational components)
+- ✅ Quest 3 performance validation
+- ✅ FERPA compliance verification
+- ✅ Educational context validation
+- ✅ Spatial precision testing
+- ✅ MCP protocol compliance testing
+- ✅ Real-time performance benchmarking
+
+Remember: This is an enterprise-grade educational VR system that will impact real learning outcomes. Every line of code should reflect this responsibility and maintain the highest standards of quality, performance, and educational effectiveness.
