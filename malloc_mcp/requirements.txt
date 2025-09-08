@@ -1,0 +1,59 @@
+# Malloc VR MCP Server Dependencies
+# Educational VR Learning Platform Requirements
+# Version: 1.0.0
+# Python 3.11+ required for Blender 4.4 compatibility
+
+# Core MCP Protocol Support
+mcp>=1.0.0
+
+# Web Framework and Communication
+fastapi>=0.104.0
+websockets>=12.0
+uvicorn>=0.24.0
+
+# Educational Mathematics and Analytics
+numpy>=1.24.0
+scipy>=1.11.0
+scikit-learn>=1.3.0
+
+# Database and Persistence
+sqlite3  # Built-in Python module
+aiosqlite>=0.19.0
+
+# Security and Encryption (FERPA Compliance)
+cryptography>=41.0.0
+PyJWT>=2.8.0
+passlib>=1.7.4
+
+# Data Processing and Validation
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
+
+# Logging and Monitoring
+structlog>=23.1.0
+
+# Optional Blender Integration (if available)
+# Note: Blender integration requires Blender 4.4+ to be installed separately
+# The following are only needed if running inside Blender environment:
+# bpy (included with Blender)
+# bmesh (included with Blender)  
+# mathutils (included with Blender)
+
+# Development and Testing Dependencies (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.7.0
+mypy>=1.5.0
+
+# Performance Monitoring
+psutil>=5.9.0
+memory-profiler>=0.61.0
+
+# Educational Data Export/Import
+pandas>=2.1.0
+openpyxl>=3.1.0
+
+# Configuration Management
+python-dotenv>=1.0.0
+toml>=0.10.2
