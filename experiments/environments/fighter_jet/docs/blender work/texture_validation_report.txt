@@ -1,0 +1,40 @@
+ADVANCED TEXTURE SYSTEM VALIDATION REPORT
+============================================================
+
+Total Assets: 3
+
+Control_Stick_Hero:
+  Quality Level: hero
+  Texture Count: 28
+  Memory Usage: 3328.0 MB
+  Resolution Compliance: True
+  UDIM Integrity: True
+  Quality Score: 75/100
+  ⚠️  Quality score below acceptable threshold
+  ⚠️  Memory usage exceeds recommended limit
+
+Throttle_Quadrant_Hero:
+  Quality Level: hero
+  Texture Count: 42
+  Memory Usage: 4992.0 MB
+  Resolution Compliance: True
+  UDIM Integrity: True
+  Quality Score: 75/100
+  ⚠️  Quality score below acceptable threshold
+  ⚠️  Memory usage exceeds recommended limit
+
+Instrument_Panel_Hero:
+  Quality Level: hero
+  Texture Count: 56
+  Memory Usage: 6656.0 MB
+  Resolution Compliance: True
+  UDIM Integrity: True
+  Quality Score: 75/100
+  ⚠️  Quality score below acceptable threshold
+  ⚠️  Memory usage exceeds recommended limit
+
+SUMMARY:
+Total Textures: 126
+Total Memory Usage: 14976.0 MB
+Average Memory per Asset: 4992.0 MB
+⚠️  Total memory usage exceeds 2GB limit!

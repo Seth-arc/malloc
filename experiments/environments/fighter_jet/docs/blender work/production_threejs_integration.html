@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fighter Jet Cockpit - Production System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #1a1a1a 0%, #000000 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .loading-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #00ccff 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .loading-details {
+            font-size: 12px;
+            opacity: 0.7;
+            text-align: center;
+        }
+
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 280px;
+            pointer-events: all;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section h3 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+        }
+
+        .control-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .quality-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        #performance-monitor {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            pointer-events: all;
+        }
+
+        .performance-metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .metric-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        #error-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            pointer-events: all;
+            font-size: 12px;
+            max-width: 200px;
+        }
+
+        .instructions h4 {
+            color: #00ff88;
+            margin-bottom: 8px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .instructions li {
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+        
+        <div id="loading-screen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Initializing Fighter Jet Cockpit</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="loading-details" id="loading-details">Loading core systems...</div>
+        </div>
+
+        <div id="ui-overlay">
+            <div id="control-panel">
+                <div class="control-section">
+                    <h3>Quality Settings</h3>
+                    <div class="control-group">
+                        <button class="control-btn active" data-quality="hero">Hero</button>
+                        <button class="control-btn" data-quality="high">High</button>
+                        <button class="control-btn" data-quality="medium">Medium</button>
+                        <button class="control-btn" data-quality="low">Low</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Components</h3>
+                    <div class="control-group">
+                        <button class="control-btn active" data-component="all">All</button>
+                        <button class="control-btn" data-component="structure">Structure</button>
+                        <button class="control-btn" data-component="controls">Controls</button>
+                        <button class="control-btn" data-component="displays">Displays</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>View Modes</h3>
+                    <div class="control-group">
+                        <button class="control-btn active" data-view="textured">Textured</button>
+                        <button class="control-btn" data-view="wireframe">Wireframe</button>
+                        <button class="control-btn" data-view="normals">Normals</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🌅 Photorealistic Sky</h3>
+                    <div class="control-group">
+                        <button class="control-btn active" data-sky="clear">Clear Day</button>
+                        <button class="control-btn" data-sky="cloudy">Overcast</button>
+                        <button class="control-btn" data-sky="stormy">Storm</button>
+                    </div>
+                    <div style="font-size: 9px; opacity: 0.6; margin-top: 5px;">
+                        Atmospheric scattering • Volumetric clouds
+                    </div>
+                </div>
+
+                <div class="control-section" id="asset-status">
+                    <h3>Asset Status</h3>
+                    <div id="asset-info" style="font-size: 11px; opacity: 0.8;">
+                        <div id="loading-status">Loading assets...</div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🎮 Pilot's Seat View</h3>
+                    <div style="font-size: 10px; opacity: 0.7; line-height: 1.3;">
+                        <div>• Mouse: Turn head left/right/up/down</div>
+                        <div>• Scroll: Lean forward/back</div>
+                        <div>• SPACE: Reset to forward view</div>
+                        <div>• Seated at proper pilot position</div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Lighting</h3>
+                    <input type="range" class="quality-slider" id="lighting-intensity" min="0" max="100" value="80">
+                </div>
+            </div>
+
+            <div id="performance-monitor">
+                <div class="performance-metric">
+                    <span>FPS:</span>
+                    <span class="metric-value" id="fps-display">0</span>
+                </div>
+                <div class="performance-metric">
+                    <span>Memory:</span>
+                    <span class="metric-value" id="memory-display">0 MB</span>
+                </div>
+                <div class="performance-metric">
+                    <span>Triangles:</span>
+                    <span class="metric-value" id="triangles-display">0</span>
+                </div>
+                <div class="performance-metric">
+                    <span>Draw Calls:</span>
+                    <span class="metric-value" id="drawcalls-display">0</span>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <h4>Controls</h4>
+                <ul>
+                    <li>• Mouse: Orbit camera</li>
+                    <li>• Wheel: Zoom</li>
+                    <li>• Right-click: Pan</li>
+                    <li>• WASD: Fly controls</li>
+                    <li>• Space: Reset view</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="error-display">
+            <h3>Loading Error</h3>
+            <p id="error-message"></p>
+            <button onclick="location.reload()">Retry</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { FlyControls } from 'three/addons/controls/FlyControls.js';
+
+        class ProductionCockpitViewer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.loadingManager = null;
+                this.gltfLoader = null;
+                
+                this.loadedAssets = new Map();
+                this.currentQuality = 'hero';
+                this.currentComponents = 'all';
+                this.currentView = 'textured';
+                
+                this.performanceStats = {
+                    fps: 0,
+                    memory: 0,
+                    triangles: 0,
+                    drawCalls: 0
+                };
+
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                this.init();
+            }
+
+            init() {
+                this.setupScene();
+                this.setupLoaders();
+                this.setupControls();
+                this.setupUI();
+                this.startLoadingSequence();
+                this.animate();
+            }
+
+            setupScene() {
+                // Scene
+                this.scene = new THREE.Scene();
+
+                // Camera - positioned from pilot's perspective inside cockpit
+                this.camera = new THREE.PerspectiveCamera(
+                    75,  // Slightly wider FOV for cockpit view
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    10000  // Extended far plane for sky
+                );
+                // Position camera at pilot's eye level inside the cockpit
+                // Seat is at (0, 0.2, 0.3), so pilot's eyes are about 0.7 units above seat
+                this.camera.position.set(0, 0.9, 0.3);   // Directly above seat position
+                this.camera.lookAt(0, 1.1, 1.7);         // Looking forward through windscreen
+
+                // Renderer (must be created before sky environment)
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    powerPreference: "high-performance"
+                });
+                
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+                // Now create sky environment (after renderer is ready)
+                this.setupSkyEnvironment();
+
+                // Lighting
+                this.setupLighting();
+            }
+
+            setupSkyEnvironment() {
+                // Create photorealistic sky environment for fighter jet
+                console.log('🌅 Setting up photorealistic sky environment...');
+                
+                // Create photorealistic sky dome with advanced atmospheric scattering
+                this.createPhotorealisticSky();
+                
+                // Create volumetric clouds with realistic lighting
+                this.createPhotorealisticClouds();
+                
+                // Setup atmospheric effects
+                this.setupAtmosphericEffects();
+                
+                console.log('✅ Photorealistic sky environment created');
+            }
+
+            createPhotorealisticSky() {
+                const skyGeometry = new THREE.SphereGeometry(8000, 32, 32);
+                
+                // Simplified but still photorealistic sky shader
+                const skyMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0.0 },
+                        sunPosition: { value: new THREE.Vector3(1000, 2000, 500) },
+                        horizonColor: { value: new THREE.Color(0.95, 0.85, 0.7) },
+                        zenithColor: { value: new THREE.Color(0.2, 0.5, 1.0) },
+                        sunColor: { value: new THREE.Color(1.0, 0.95, 0.8) },
+                        exposure: { value: 0.2 }
+                    },
+                    vertexShader: `
+                        varying vec3 vWorldPosition;
+                        varying vec3 vSunDirection;
+                        
+                        uniform vec3 sunPosition;
+                        
+                        void main() {
+                            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                            vWorldPosition = worldPosition.xyz;
+                            vSunDirection = normalize(sunPosition);
+                            
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        precision mediump float;
+                        
+                        varying vec3 vWorldPosition;
+                        varying vec3 vSunDirection;
+                        
+                        uniform vec3 horizonColor;
+                        uniform vec3 zenithColor;
+                        uniform vec3 sunColor;
+                        uniform float exposure;
+                        uniform float time;
+                        
+                        const float PI = 3.14159265359;
+                        
+                        // Simple noise function
+                        float noise(vec3 p) {
+                            return fract(sin(dot(p, vec3(12.9898, 78.233, 45.5432))) * 43758.5453);
+                        }
+                        
+                        void main() {
+                            vec3 direction = normalize(vWorldPosition);
+                            
+                            // Sky gradient based on height
+                            float height = direction.y;
+                            float heightFactor = pow(max(height, 0.0), 0.4);
+                            
+                            // Basic atmospheric scattering approximation
+                            float sunAlignment = dot(direction, vSunDirection);
+                            float scattering = pow(max(0.0, 1.0 - abs(sunAlignment)), 3.0);
+                            
+                            // Sun disk
+                            float sunDisk = smoothstep(0.9995, 0.9999, sunAlignment);
+                            
+                            // Base sky color
+                            vec3 skyColor = mix(horizonColor, zenithColor, heightFactor);
+                            
+                            // Add atmospheric scattering effect
+                            skyColor = mix(skyColor, sunColor * 0.8, scattering * 0.3);
+                            
+                            // Add sun
+                            skyColor += sunColor * sunDisk;
+                            
+                            // Add subtle atmospheric noise
+                            float noiseValue = noise(direction * 100.0 + time * 0.1) * 0.02;
+                            skyColor += vec3(noiseValue);
+                            
+                            // Apply exposure
+                            skyColor = vec3(1.0) - exp(-exposure * skyColor);
+                            
+                            gl_FragColor = vec4(skyColor, 1.0);
+                        }
+                    `,
+                    side: THREE.BackSide
+                });
+                
+                const skyMesh = new THREE.Mesh(skyGeometry, skyMaterial);
+                skyMesh.name = 'PhotorealisticSky';
+                this.scene.add(skyMesh);
+                
+                // Store reference for animation
+                this.skyMaterial = skyMaterial;
+            }
+
+            createPhotorealisticClouds() {
+                // Create photorealistic volumetric clouds with realistic lighting
+                const cloudGroup = new THREE.Group();
+                cloudGroup.name = 'PhotorealisticCloudSystem';
+                
+                // Simplified but effective cloud material
+                const cloudMaterial = new THREE.MeshLambertMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8,
+                    fog: true
+                });
+                
+                // Create different photorealistic cloud layers
+                this.createPhotorealisticCloudLayer(cloudGroup, cloudMaterial, 2000, 35, 0.7, 'Cumulus');
+                this.createPhotorealisticCloudLayer(cloudGroup, cloudMaterial, 3500, 25, 0.5, 'Altocumulus');
+                this.createPhotorealisticCloudLayer(cloudGroup, cloudMaterial, 5000, 15, 0.3, 'Cirrus');
+                
+                this.scene.add(cloudGroup);
+                
+                // Store reference for animation
+                this.cloudSystem = cloudGroup;
+                this.cloudMaterial = cloudMaterial;
+            }
+
+            createPhotorealisticCloudLayer(parent, material, altitude, count, opacity, type) {
+                const layerGroup = new THREE.Group();
+                layerGroup.name = `${type}Layer`;
+                
+                // Clone material for this layer with specific properties
+                const layerMaterial = material.clone();
+                layerMaterial.opacity = opacity;
+                
+                for (let i = 0; i < count; i++) {
+                    const cloud = this.createPhotorealisticCloud(layerMaterial, type);
+                    
+                    // Position clouds in realistic formation
+                    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+                    const radius = 2000 + Math.random() * 3000;
+                    const height = altitude + (Math.random() - 0.5) * 1000;
+                    
+                    cloud.position.x = Math.cos(angle) * radius + (Math.random() - 0.5) * 1500;
+                    cloud.position.y = height;
+                    cloud.position.z = Math.sin(angle) * radius + (Math.random() - 0.5) * 1500;
+                    
+                    // Realistic cloud rotation and scale
+                    cloud.rotation.set(
+                        Math.random() * 0.3,
+                        Math.random() * Math.PI * 2,
+                        Math.random() * 0.3
+                    );
+                    
+                    const scale = 0.7 + Math.random() * 1.8;
+                    cloud.scale.set(scale, scale * 0.4, scale);
+                    
+                    layerGroup.add(cloud);
+                }
+                
+                parent.add(layerGroup);
+            }
+
+            createPhotorealisticCloud(material, type) {
+                const cloudGroup = new THREE.Group();
+                
+                // Different cloud complexity based on type
+                let segments, detail, puffCount;
+                
+                switch (type) {
+                    case 'Cumulus':
+                        segments = 16;
+                        detail = 12;
+                        puffCount = 12 + Math.floor(Math.random() * 8);
+                        break;
+                    case 'Altocumulus':
+                        segments = 12;
+                        detail = 8;
+                        puffCount = 8 + Math.floor(Math.random() * 6);
+                        break;
+                    case 'Cirrus':
+                        segments = 8;
+                        detail = 6;
+                        puffCount = 4 + Math.floor(Math.random() * 4);
+                        break;
+                    default:
+                        segments = 12;
+                        detail = 8;
+                        puffCount = 8;
+                }
+                
+                // Create volumetric cloud puffs
+                for (let i = 0; i < puffCount; i++) {
+                    const puffGeometry = new THREE.SphereGeometry(
+                        60 + Math.random() * 80,
+                        segments,
+                        detail
+                    );
+                    
+                    // Distort geometry for realistic cloud shapes
+                    const positions = puffGeometry.attributes.position;
+                    for (let j = 0; j < positions.count; j++) {
+                        const vertex = new THREE.Vector3(
+                            positions.getX(j),
+                            positions.getY(j),
+                            positions.getZ(j)
+                        );
+                        
+                        // Add noise distortion
+                        const noise = Math.sin(vertex.x * 0.02) * Math.cos(vertex.y * 0.03) * Math.sin(vertex.z * 0.025);
+                        vertex.multiplyScalar(1 + noise * 0.3);
+                        
+                        positions.setXYZ(j, vertex.x, vertex.y, vertex.z);
+                    }
+                    positions.needsUpdate = true;
+                    puffGeometry.computeVertexNormals();
+                    
+                    const puff = new THREE.Mesh(puffGeometry, material);
+                    
+                    // Position puffs organically
+                    const spreadX = type === 'Cirrus' ? 500 : 200;
+                    const spreadY = type === 'Cumulus' ? 180 : 100;
+                    const spreadZ = type === 'Cirrus' ? 300 : 150;
+                    
+                    puff.position.x = (Math.random() - 0.5) * spreadX;
+                    puff.position.y = (Math.random() - 0.5) * spreadY;
+                    puff.position.z = (Math.random() - 0.5) * spreadZ;
+                    
+                    // Organic rotation
+                    puff.rotation.set(
+                        Math.random() * 0.5,
+                        Math.random() * 0.5,
+                        Math.random() * 0.5
+                    );
+                    
+                    // Variable scale for organic look
+                    const puffScale = 0.6 + Math.random() * 0.8;
+                    puff.scale.set(
+                        puffScale * (0.8 + Math.random() * 0.4),
+                        puffScale * (0.6 + Math.random() * 0.8),
+                        puffScale * (0.8 + Math.random() * 0.4)
+                    );
+                    
+                    cloudGroup.add(puff);
+                }
+                
+                return cloudGroup;
+            }
+
+            setupAtmosphericEffects() {
+                // Enhanced atmospheric fog with distance-based color shifts
+                this.scene.fog = new THREE.FogExp2(0x87ceeb, 0.00008);
+                
+                // Add atmospheric light scattering particles
+                this.createAtmosphericParticles();
+                
+                console.log('✅ Atmospheric effects configured');
+            }
+
+            createAtmosphericParticles() {
+                // Create subtle atmospheric particles for depth
+                const particleCount = 1000;
+                const particles = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    positions[i3] = (Math.random() - 0.5) * 10000;
+                    positions[i3 + 1] = Math.random() * 4000;
+                    positions[i3 + 2] = (Math.random() - 0.5) * 10000;
+                }
+                
+                particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                const particleMaterial = new THREE.PointsMaterial({
+                    color: 0xffffff,
+                    size: 2,
+                    transparent: true,
+                    opacity: 0.1,
+                    sizeAttenuation: true
+                });
+                
+                const particleSystem = new THREE.Points(particles, particleMaterial);
+                particleSystem.name = 'AtmosphericParticles';
+                this.scene.add(particleSystem);
+                
+                this.atmosphericParticles = particleSystem;
+            }
+
+            createCloudLayer(parent, material, altitude, count, opacity, type) {
+                const layerGroup = new THREE.Group();
+                layerGroup.name = `${type}Layer`;
+                
+                // Adjust material for this layer
+                const layerMaterial = material.clone();
+                layerMaterial.opacity = opacity;
+                
+                for (let i = 0; i < count; i++) {
+                    const cloud = this.createSingleCloud(layerMaterial, type);
+                    
+                    // Position clouds in a sphere around the cockpit
+                    const angle = (i / count) * Math.PI * 2;
+                    const radius = 1500 + Math.random() * 2000;
+                    const height = altitude + (Math.random() - 0.5) * 800;
+                    
+                    cloud.position.x = Math.cos(angle) * radius + (Math.random() - 0.5) * 1000;
+                    cloud.position.y = height;
+                    cloud.position.z = Math.sin(angle) * radius + (Math.random() - 0.5) * 1000;
+                    
+                    // Random rotation and scale
+                    cloud.rotation.y = Math.random() * Math.PI * 2;
+                    const scale = 0.5 + Math.random() * 1.5;
+                    cloud.scale.set(scale, scale * 0.6, scale);
+                    
+                    layerGroup.add(cloud);
+                }
+                
+                parent.add(layerGroup);
+            }
+
+            createSingleCloud(material, type) {
+                const cloudGroup = new THREE.Group();
+                
+                // Different cloud shapes based on type
+                let puffCount, puffSize, spreadX, spreadY, spreadZ;
+                
+                switch (type) {
+                    case 'Cumulus':
+                        puffCount = 8 + Math.floor(Math.random() * 6);
+                        puffSize = 80 + Math.random() * 40;
+                        spreadX = 200;
+                        spreadY = 150;
+                        spreadZ = 200;
+                        break;
+                    case 'Altocumulus':
+                        puffCount = 5 + Math.floor(Math.random() * 4);
+                        puffSize = 60 + Math.random() * 30;
+                        spreadX = 300;
+                        spreadY = 80;
+                        spreadZ = 150;
+                        break;
+                    case 'Cirrus':
+                        puffCount = 3 + Math.floor(Math.random() * 3);
+                        puffSize = 40 + Math.random() * 20;
+                        spreadX = 400;
+                        spreadY = 50;
+                        spreadZ = 100;
+                        break;
+                    default:
+                        puffCount = 6;
+                        puffSize = 70;
+                        spreadX = spreadY = spreadZ = 150;
+                }
+                
+                // Create individual cloud puffs
+                for (let i = 0; i < puffCount; i++) {
+                    const puffGeometry = new THREE.SphereGeometry(
+                        puffSize * (0.8 + Math.random() * 0.4), 
+                        8, 
+                        6
+                    );
+                    
+                    const puff = new THREE.Mesh(puffGeometry, material);
+                    
+                    // Position puffs to form cloud shape
+                    puff.position.x = (Math.random() - 0.5) * spreadX;
+                    puff.position.y = (Math.random() - 0.5) * spreadY;
+                    puff.position.z = (Math.random() - 0.5) * spreadZ;
+                    
+                    // Slight random scale for each puff
+                    const puffScale = 0.8 + Math.random() * 0.4;
+                    puff.scale.set(puffScale, puffScale, puffScale);
+                    
+                    cloudGroup.add(puff);
+                }
+                
+                return cloudGroup;
+            }
+
+            setupLighting() {
+                // Bright ambient light for sky environment
+                const ambientLight = new THREE.AmbientLight(0x87ceeb, 0.6);
+                this.scene.add(ambientLight);
+
+                // Sun light (key light) - positioned high like the sun
+                const sunLight = new THREE.DirectionalLight(0xffffcc, 1.2);
+                sunLight.position.set(1000, 3000, 500);
+                sunLight.castShadow = true;
+                sunLight.shadow.mapSize.width = 2048;
+                sunLight.shadow.mapSize.height = 2048;
+                sunLight.shadow.camera.near = 0.5;
+                sunLight.shadow.camera.far = 8000;
+                sunLight.shadow.camera.left = -50;
+                sunLight.shadow.camera.right = 50;
+                sunLight.shadow.camera.top = 50;
+                sunLight.shadow.camera.bottom = -50;
+                this.scene.add(sunLight);
+
+                // Sky scattered light (blue tint from sky)
+                const skyLight = new THREE.DirectionalLight(0x87ceeb, 0.4);
+                skyLight.position.set(-500, 2000, -1000);
+                this.scene.add(skyLight);
+
+                // Cloud reflected light (soft white)
+                const cloudLight = new THREE.DirectionalLight(0xffffff, 0.3);
+                cloudLight.position.set(0, -1000, 0);
+                this.scene.add(cloudLight);
+
+                // Store references for UI control
+                this.lights = {
+                    ambient: ambientLight,
+                    sun: sunLight,
+                    sky: skyLight,
+                    cloud: cloudLight
+                };
+            }
+
+            setupLoaders() {
+                this.loadingManager = new THREE.LoadingManager();
+                
+                // Progress tracking
+                this.loadingManager.onProgress = (url, loaded, total) => {
+                    const progress = (loaded / total) * 100;
+                    this.updateLoadingProgress(progress, `Loading: ${url.split('/').pop()}`);
+                };
+
+                this.loadingManager.onLoad = () => {
+                    this.onLoadingComplete();
+                };
+
+                this.loadingManager.onError = (url) => {
+                    this.showError(`Failed to load: ${url}`);
+                };
+
+                // DRACO loader for compressed geometry
+                const dracoLoader = new DRACOLoader();
+                dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+
+                // GLTF loader
+                this.gltfLoader = new GLTFLoader(this.loadingManager);
+                this.gltfLoader.setDRACOLoader(dracoLoader);
+            }
+
+            setupControls() {
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                
+                // Cockpit-appropriate control limits for pilot seated position
+                this.controls.minDistance = 0.1;   // Allow close inspection
+                this.controls.maxDistance = 1.5;   // Keep close to pilot seat
+                
+                // Limit vertical rotation to realistic head movement
+                this.controls.maxPolarAngle = Math.PI * 0.75;  // Can look up through canopy
+                this.controls.minPolarAngle = Math.PI * 0.2;   // Can look down at controls
+                
+                // Limit horizontal rotation to realistic pilot head movement  
+                this.controls.minAzimuthAngle = -Math.PI * 0.5; // Left limit (90°)
+                this.controls.maxAzimuthAngle = Math.PI * 0.5;  // Right limit (90°)
+                
+                // Set initial target to look forward through windscreen
+                this.controls.target.set(0, 1.1, 1.7);
+                
+                // Keyboard controls
+                this.setupKeyboardControls();
+            }
+
+            setupKeyboardControls() {
+                window.addEventListener('keydown', (event) => {
+                    switch(event.code) {
+                        case 'Space':
+                            event.preventDefault();
+                            this.resetCameraView();
+                            break;
+                        case 'KeyF':
+                            this.toggleFullscreen();
+                            break;
+                        case 'KeyV':
+                            this.cycleViewMode();
+                            break;
+                        case 'KeyQ':
+                            this.cycleQuality();
+                            break;
+                    }
+                });
+            }
+
+            setupUI() {
+                // Quality controls
+                const qualityButtons = document.querySelectorAll('[data-quality]');
+                qualityButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.setQuality(button.dataset.quality);
+                        this.updateActiveButton(qualityButtons, button);
+                    });
+                });
+
+                // Component controls
+                const componentButtons = document.querySelectorAll('[data-component]');
+                componentButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.setComponents(button.dataset.component);
+                        this.updateActiveButton(componentButtons, button);
+                    });
+                });
+
+                // View mode controls
+                const viewButtons = document.querySelectorAll('[data-view]');
+                viewButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.setViewMode(button.dataset.view);
+                        this.updateActiveButton(viewButtons, button);
+                    });
+                });
+
+                // Sky environment controls
+                const skyButtons = document.querySelectorAll('[data-sky]');
+                skyButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.setSkyEnvironment(button.dataset.sky);
+                        this.updateActiveButton(skyButtons, button);
+                    });
+                });
+
+                // Lighting control
+                const lightingSlider = document.getElementById('lighting-intensity');
+                lightingSlider.addEventListener('input', (e) => {
+                    this.setLightingIntensity(e.target.value / 100);
+                });
+
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.onWindowResize();
+                });
+            }
+
+            updateActiveButton(buttons, activeButton) {
+                buttons.forEach(btn => btn.classList.remove('active'));
+                activeButton.classList.add('active');
+            }
+
+            async startLoadingSequence() {
+                try {
+                    this.updateLoadingProgress(10, 'Initializing asset pipeline...');
+                    await this.delay(500);
+
+                    this.updateLoadingProgress(20, 'Searching for assembled cockpit...');
+                    await this.delay(300);
+
+                    this.updateLoadingProgress(30, 'Loading cockpit assets...');
+                    await this.loadAssetsByQuality('hero');
+
+                    this.updateLoadingProgress(50, 'Loading additional quality levels...');
+                    await this.loadAssetsByQuality('high');
+                    await this.loadAssetsByQuality('medium');
+                    await this.loadAssetsByQuality('low');
+
+                    this.updateLoadingProgress(80, 'Optimizing for performance...');
+                    await this.delay(300);
+
+                    // Check if we have any assets loaded
+                    if (this.loadedAssets.size === 0) {
+                        this.updateLoadingProgress(90, 'Creating placeholder cockpit...');
+                        this.createPlaceholderCockpit();
+                    }
+
+                    this.updateLoadingProgress(100, 'Ready!');
+                    await this.delay(500);
+
+                } catch (error) {
+                    this.updateLoadingProgress(90, 'Creating fallback cockpit...');
+                    this.createPlaceholderCockpit();
+                    this.updateLoadingProgress(100, 'Ready with placeholder!');
+                    await this.delay(500);
+                }
+            }
+
+            async loadAssetsByQuality(quality) {
+                // Try multiple possible assembled cockpit file names
+                const possibleAssembledPaths = [
+                    `./exports_assembled/fighter_jet_cockpit_complete_assembled.glb`,
+                    `./exports_assembled/fighter_jet_cockpit_assembled.glb`,
+                    `./exports_assembled/basic_cockpit_fallback.glb`
+                ];
+                
+                // Try to load assembled cockpit
+                for (const assembledPath of possibleAssembledPaths) {
+                    try {
+                        await this.loadAsset(assembledPath, quality, true);
+                        console.log(`✅ Loaded assembled cockpit: ${assembledPath}`);
+                        return;
+                    } catch (error) {
+                        console.warn(`Assembled cockpit not found: ${assembledPath}`);
+                    }
+                }
+                
+                console.log(`🔄 No assembled cockpit found, loading individual components...`);
+                
+                // Fallback to individual components
+                const assetPaths = [
+                    `./exports/${quality}/fighter_cockpit_${quality}.glb`,
+                    `./exports/${quality}/control_stick_hero_${quality}.glb`,
+                    `./exports/${quality}/throttle_quadrant_hero_${quality}.glb`,
+                    `./exports/${quality}/instrument_panel_hero_${quality}.glb`
+                ];
+
+                let loadedAny = false;
+                const loadPromises = assetPaths.map(async (path) => {
+                    try {
+                        await this.loadAsset(path, quality);
+                        loadedAny = true;
+                    } catch (error) {
+                        console.warn(`Failed to load ${path}:`, error);
+                    }
+                });
+                
+                await Promise.all(loadPromises);
+                
+                if (!loadedAny) {
+                    console.warn(`No assets could be loaded for ${quality} quality`);
+                    this.createPlaceholderCockpit();
+                }
+            }
+
+            loadAsset(path, quality, isAssembled = false) {
+                return new Promise((resolve, reject) => {
+                    this.gltfLoader.load(
+                        path,
+                        (gltf) => {
+                            const assetName = isAssembled ? 'complete_assembled_cockpit' : path.split('/').pop().replace('.glb', '');
+                            const processedAsset = this.processLoadedAsset(gltf, quality);
+                            
+                            if (!this.loadedAssets.has(assetName)) {
+                                this.loadedAssets.set(assetName, {});
+                            }
+                            this.loadedAssets.get(assetName)[quality] = processedAsset;
+                            
+                            resolve(processedAsset);
+                        },
+                        undefined,
+                        (error) => {
+                            console.warn(`Failed to load ${path}:`, error);
+                            if (isAssembled) {
+                                reject(error); // Reject for assembled cockpit to trigger fallback
+                            } else {
+                                resolve(null); // Don't reject for individual assets
+                            }
+                        }
+                    );
+                });
+            }
+
+            processLoadedAsset(gltf, quality) {
+                const asset = {
+                    scene: gltf.scene.clone(),
+                    animations: gltf.animations,
+                    quality: quality,
+                    triangles: 0,
+                    materials: new Set()
+                };
+
+                // Calculate statistics and fix cockpit visibility
+                asset.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        const geometry = child.geometry;
+                        asset.triangles += geometry.index ? 
+                            geometry.index.count / 3 : 
+                            geometry.attributes.position.count / 3;
+
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => asset.materials.add(mat));
+                            } else {
+                                asset.materials.add(child.material);
+                            }
+                        }
+
+                        // Fix cockpit visibility - make main cockpit structure transparent or invisible
+                        const name = child.name.toLowerCase();
+                        if (name.includes('cockpit_tub') || name.includes('cockpit_structure') || 
+                            name.includes('main_cockpit') || name.includes('cockpit_shell')) {
+                            console.log(`🔧 Making ${child.name} transparent for pilot view`);
+                            
+                            // Make the cockpit structure transparent
+                            if (child.material) {
+                                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                                materials.forEach(mat => {
+                                    if (mat.transparent !== undefined) {
+                                        mat.transparent = true;
+                                        mat.opacity = 0.1;  // Almost invisible
+                                        mat.side = THREE.DoubleSide;  // Show both sides
+                                    }
+                                });
+                            }
+                        }
+                        
+                        // Make canopy glass transparent for clear sky view
+                        if (name.includes('canopy') || name.includes('windscreen') || name.includes('glass') || 
+                            name.includes('window') || name.includes('transparency')) {
+                            console.log(`🪟 Making ${child.name} transparent canopy glass`);
+                            
+                            if (child.material) {
+                                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                                materials.forEach(mat => {
+                                    // Convert to realistic fighter jet canopy glass
+                                    mat.transparent = true;
+                                    mat.opacity = 0.15;
+                                    mat.roughness = 0.0;
+                                    mat.metalness = 0.0;
+                                    mat.side = THREE.DoubleSide;
+                                    
+                                    // Add clearcoat for realistic glass effect if supported
+                                    if (mat.clearcoat !== undefined) {
+                                        mat.clearcoat = 1.0;
+                                        mat.clearcoatRoughness = 0.0;
+                                    }
+                                });
+                            }
+                        }
+
+                        // Enable shadows
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                return asset;
+            }
+
+            setQuality(quality) {
+                if (this.currentQuality === quality) return;
+
+                this.currentQuality = quality;
+                this.updateSceneAssets();
+                this.updatePerformanceStats();
+            }
+
+            setComponents(components) {
+                this.currentComponents = components;
+                this.updateSceneAssets();
+            }
+
+            setViewMode(viewMode) {
+                this.currentView = viewMode;
+                this.updateSceneRenderMode();
+            }
+
+            updateSceneAssets() {
+                // Clear current scene
+                const objectsToRemove = [];
+                this.scene.traverse((child) => {
+                    if (child.userData.isAsset) {
+                        objectsToRemove.push(child);
+                    }
+                });
+                objectsToRemove.forEach(obj => this.scene.remove(obj));
+
+                // Add assets for current quality and components
+                this.loadedAssets.forEach((qualityVersions, assetName) => {
+                    if (this.shouldIncludeAsset(assetName)) {
+                        const asset = qualityVersions[this.currentQuality];
+                        if (asset) {
+                            asset.scene.userData.isAsset = true;
+                            this.scene.add(asset.scene);
+                        }
+                    }
+                });
+
+                this.resetCameraView();
+            }
+
+            shouldIncludeAsset(assetName) {
+                if (this.currentComponents === 'all') return true;
+
+                const componentMap = {
+                    'structure': ['fighter_cockpit'],
+                    'controls': ['control_stick', 'throttle_quadrant'],
+                    'displays': ['instrument_panel']
+                };
+
+                const allowedAssets = componentMap[this.currentComponents] || [];
+                return allowedAssets.some(allowed => assetName.includes(allowed));
+            }
+
+            updateSceneRenderMode() {
+                this.scene.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        const materials = Array.isArray(child.material) ? child.material : [child.material];
+                        
+                        materials.forEach(material => {
+                            switch (this.currentView) {
+                                case 'wireframe':
+                                    material.wireframe = true;
+                                    break;
+                                case 'normals':
+                                    // Switch to normal material if available
+                                    break;
+                                default:
+                                    material.wireframe = false;
+                                    break;
+                            }
+                        });
+                    }
+                });
+            }
+
+            setLightingIntensity(intensity) {
+                this.lights.sun.intensity = intensity * 1.2;
+                this.lights.sky.intensity = intensity * 0.4;
+                this.lights.cloud.intensity = intensity * 0.3;
+                this.lights.ambient.intensity = intensity * 0.6;
+            }
+
+            setSkyEnvironment(skyType) {
+                console.log(`🌅 Changing photorealistic sky to: ${skyType}`);
+                
+                // Get photorealistic sky and cloud system references
+                const skyMesh = this.scene.getObjectByName('PhotorealisticSky');
+                const cloudSystem = this.scene.getObjectByName('PhotorealisticCloudSystem');
+                
+                switch (skyType) {
+                    case 'clear':
+                        // Perfect clear sky conditions
+                        if (skyMesh && skyMesh.material.uniforms) {
+                            skyMesh.material.uniforms.horizonColor.value.setRGB(0.95, 0.85, 0.7);
+                            skyMesh.material.uniforms.zenithColor.value.setRGB(0.2, 0.5, 1.0);
+                            skyMesh.material.uniforms.sunColor.value.setRGB(1.0, 0.95, 0.8);
+                            skyMesh.material.uniforms.exposure.value = 0.25;
+                        }
+                        if (cloudSystem) {
+                            cloudSystem.children.forEach(layer => {
+                                if (layer.name.includes('Cumulus')) layer.visible = false;  // Clear of low clouds
+                                if (layer.name.includes('Altocumulus')) layer.visible = true;
+                                if (layer.name.includes('Cirrus')) layer.visible = true;
+                            });
+                        }
+                        if (this.cloudMaterial) {
+                            this.cloudMaterial.opacity = 0.5;
+                        }
+                        // Bright clear weather lighting
+                        this.lights.sun.intensity = 1.4;
+                        this.lights.ambient.color.setHex(0x87ceeb);
+                        this.scene.fog.color.setHex(0x87ceeb);
+                        this.scene.fog.density = 0.00005;
+                        break;
+                        
+                    case 'cloudy':
+                        // Overcast conditions with dramatic clouds
+                        if (skyMesh && skyMesh.material.uniforms) {
+                            skyMesh.material.uniforms.horizonColor.value.setRGB(0.7, 0.75, 0.8);
+                            skyMesh.material.uniforms.zenithColor.value.setRGB(0.4, 0.5, 0.6);
+                            skyMesh.material.uniforms.sunColor.value.setRGB(0.9, 0.9, 0.95);
+                            skyMesh.material.uniforms.exposure.value = 0.15;
+                        }
+                        if (cloudSystem) {
+                            cloudSystem.children.forEach(layer => {
+                                layer.visible = true;  // All cloud layers visible
+                            });
+                        }
+                        if (this.cloudMaterial) {
+                            this.cloudMaterial.opacity = 0.85;
+                        }
+                        // Softer overcast lighting
+                        this.lights.sun.intensity = 0.9;
+                        this.lights.ambient.color.setHex(0x6699cc);
+                        this.scene.fog.color.setHex(0x8fb8d6);
+                        this.scene.fog.density = 0.0001;
+                        break;
+                        
+                    case 'stormy':
+                        // Dramatic storm conditions
+                        if (skyMesh && skyMesh.material.uniforms) {
+                            skyMesh.material.uniforms.horizonColor.value.setRGB(0.4, 0.4, 0.5);
+                            skyMesh.material.uniforms.zenithColor.value.setRGB(0.2, 0.25, 0.35);
+                            skyMesh.material.uniforms.sunColor.value.setRGB(0.8, 0.8, 0.9);
+                            skyMesh.material.uniforms.exposure.value = 0.1;
+                        }
+                        if (cloudSystem) {
+                            cloudSystem.children.forEach(layer => {
+                                layer.visible = true;  // Dense storm clouds
+                            });
+                        }
+                        if (this.cloudMaterial) {
+                            this.cloudMaterial.opacity = 0.95;
+                            this.cloudMaterial.color.setHex(0x555555);
+                        }
+                        // Dramatic storm lighting
+                        this.lights.sun.intensity = 0.6;
+                        this.lights.ambient.color.setHex(0x445566);
+                        this.scene.fog.color.setHex(0x556983);
+                        this.scene.fog.density = 0.00015;
+                        break;
+                }
+                
+                // Update tone mapping based on conditions
+                this.renderer.toneMappingExposure = skyType === 'clear' ? 1.4 : 
+                                                   skyType === 'cloudy' ? 1.0 : 0.8;
+            }
+
+            resetCameraView() {
+                // Reset to pilot's perspective inside cockpit
+                console.log('🎮 Resetting to pilot perspective...');
+                
+                // Position camera at pilot's eye level (seated position)
+                // Seat is at (0, 0.2, 0.3), so pilot's eyes are about 0.7 units above seat
+                this.camera.position.set(0, 0.9, 0.3);
+                
+                // Look towards the instrument panel area through windscreen
+                this.controls.target.set(0, 1.1, 1.7);
+                
+                // Update controls smoothly
+                this.controls.update();
+                
+                console.log('✅ Camera reset to cockpit view');
+            }
+
+            updatePerformanceStats() {
+                // Calculate current scene statistics
+                let triangles = 0;
+                let materials = new Set();
+
+                this.scene.traverse((child) => {
+                    if (child.isMesh && child.userData.isAsset) {
+                        const geometry = child.geometry;
+                        triangles += geometry.index ? 
+                            geometry.index.count / 3 : 
+                            geometry.attributes.position.count / 3;
+
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => materials.add(mat));
+                            } else {
+                                materials.add(child.material);
+                            }
+                        }
+                    }
+                });
+
+                this.performanceStats.triangles = Math.floor(triangles);
+                this.performanceStats.drawCalls = materials.size;
+                
+                // Estimate memory usage (simplified)
+                this.performanceStats.memory = Math.floor((triangles * 32 + materials.size * 1024) / 1024);
+            }
+
+            updateLoadingProgress(percent, message) {
+                const progressBar = document.getElementById('progress-bar');
+                const loadingDetails = document.getElementById('loading-details');
+                
+                progressBar.style.width = `${percent}%`;
+                loadingDetails.textContent = message;
+            }
+
+            onLoadingComplete() {
+                setTimeout(() => {
+                    document.getElementById('loading-screen').classList.add('hidden');
+                    this.updateSceneAssets();
+                    this.updatePerformanceStats();
+                    this.updateAssetStatus();
+                }, 500);
+            }
+
+            updateAssetStatus() {
+                const statusDiv = document.getElementById('loading-status');
+                if (!statusDiv) return;
+
+                let statusHtml = '';
+                
+                if (this.loadedAssets.size === 0) {
+                    statusHtml = '<div style="color: #ff6666;">No assets loaded</div>';
+                } else if (this.loadedAssets.has('placeholder_cockpit')) {
+                    statusHtml = `
+                        <div style="color: #ffaa66;">Using placeholder cockpit</div>
+                        <div style="margin-top: 5px; font-size: 10px;">
+                            To get the full cockpit:<br>
+                            1. Run assembly script in Blender<br>
+                            2. Refresh this page
+                        </div>
+                    `;
+                } else if (this.loadedAssets.has('complete_assembled_cockpit')) {
+                    statusHtml = '<div style="color: #66ff66;">✅ Complete assembled cockpit</div>';
+                } else {
+                    statusHtml = `
+                        <div style="color: #66aaff;">Individual components loaded</div>
+                        <div style="margin-top: 2px; font-size: 10px;">
+                            Assets: ${this.loadedAssets.size}
+                        </div>
+                    `;
+                }
+                
+                statusDiv.innerHTML = statusHtml;
+            }
+
+            showError(message) {
+                const errorDisplay = document.getElementById('error-display');
+                const errorMessage = document.getElementById('error-message');
+                
+                errorMessage.textContent = message;
+                errorDisplay.style.display = 'block';
+                
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            cycleViewMode() {
+                const modes = ['textured', 'wireframe', 'normals'];
+                const currentIndex = modes.indexOf(this.currentView);
+                const nextIndex = (currentIndex + 1) % modes.length;
+                
+                this.setViewMode(modes[nextIndex]);
+                
+                // Update UI
+                const viewButtons = document.querySelectorAll('[data-view]');
+                const targetButton = document.querySelector(`[data-view="${modes[nextIndex]}"]`);
+                this.updateActiveButton(viewButtons, targetButton);
+            }
+
+            cycleQuality() {
+                const qualities = ['hero', 'high', 'medium', 'low'];
+                const currentIndex = qualities.indexOf(this.currentQuality);
+                const nextIndex = (currentIndex + 1) % qualities.length;
+                
+                this.setQuality(qualities[nextIndex]);
+                
+                // Update UI
+                const qualityButtons = document.querySelectorAll('[data-quality]');
+                const targetButton = document.querySelector(`[data-quality="${qualities[nextIndex]}"]`);
+                this.updateActiveButton(qualityButtons, targetButton);
+            }
+
+            updateFPSDisplay() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                
+                if (currentTime >= this.lastTime + 1000) {
+                    this.performanceStats.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+                    
+                    // Update UI
+                    document.getElementById('fps-display').textContent = this.performanceStats.fps;
+                    document.getElementById('memory-display').textContent = `${this.performanceStats.memory} MB`;
+                    document.getElementById('triangles-display').textContent = this.performanceStats.triangles.toLocaleString();
+                    document.getElementById('drawcalls-display').textContent = this.performanceStats.drawCalls;
+                    
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Animate clouds for realistic movement
+                this.animateClouds();
+                
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+                this.updateFPSDisplay();
+            }
+
+            animateClouds() {
+                const time = Date.now() * 0.0001;
+                
+                // Animate photorealistic sky
+                if (this.skyMaterial) {
+                    this.skyMaterial.uniforms.time.value = time;
+                }
+                
+                // Cloud material is now simplified - no shader animation needed
+                
+                // Animate atmospheric particles
+                if (this.atmosphericParticles) {
+                    this.atmosphericParticles.rotation.y += 0.0002;
+                }
+                
+                if (this.cloudSystem) {
+                    // Animate different cloud layers at different speeds
+                    this.cloudSystem.children.forEach((layer, layerIndex) => {
+                        if (layer.name.includes('Layer')) {
+                            // Different speeds for different altitudes
+                            let speed = 0.1;
+                            if (layer.name.includes('Cumulus')) speed = 0.03;      // Slow low clouds
+                            if (layer.name.includes('Altocumulus')) speed = 0.05;  // Medium mid clouds
+                            if (layer.name.includes('Cirrus')) speed = 0.08;       // Fast high clouds
+                            
+                            // Rotate entire layer slowly for wind effect
+                            layer.rotation.y += speed * 0.05;
+                            
+                            // Individual cloud movement
+                            layer.children.forEach((cloud, cloudIndex) => {
+                                // Realistic floating motion
+                                const floatSpeed = time * 0.5 + cloudIndex * 0.3;
+                                cloud.position.y += Math.sin(floatSpeed) * 0.3;
+                                
+                                // Gentle rotation for volume
+                                cloud.rotation.x += speed * 0.02;
+                                cloud.rotation.z += speed * 0.03;
+                                
+                                // Subtle scale breathing for realism
+                                const breathe = 1 + Math.sin(time * 0.8 + cloudIndex * 0.7) * 0.015;
+                                if (!cloud.userData.baseScale) {
+                                    cloud.userData.baseScale = {
+                                        x: cloud.scale.x,
+                                        y: cloud.scale.y,
+                                        z: cloud.scale.z
+                                    };
+                                }
+                                
+                                cloud.scale.set(
+                                    cloud.userData.baseScale.x * breathe,
+                                    cloud.userData.baseScale.y * breathe,
+                                    cloud.userData.baseScale.z * breathe
+                                );
+                            });
+                        }
+                    });
+                }
+            }
+
+            createHollowCockpitFrame(cockpitGroup) {
+                // Military-grade aluminum frame material
+                const frameMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x6b7280,      // Military gray
+                    roughness: 0.3,       // Polished metal
+                    metalness: 0.9,       // Highly metallic
+                    envMapIntensity: 1.2  // Reflects environment well
+                });
+                
+                const frameThickness = 0.05;
+                const cockpitWidth = 1.2;
+                const cockpitLength = 2.0;
+                const cockpitHeight = 1.4;
+                const centerY = 0.5;
+                const centerZ = 0.7;
+                
+                // Create hollow frame using thin boxes for edges
+                
+                // Bottom frame edges
+                const bottomFrames = [
+                    // Front edge
+                    { size: [cockpitWidth, frameThickness, frameThickness], pos: [0, centerY - cockpitHeight/2, centerZ + cockpitLength/2] },
+                    // Back edge  
+                    { size: [cockpitWidth, frameThickness, frameThickness], pos: [0, centerY - cockpitHeight/2, centerZ - cockpitLength/2] },
+                    // Left edge
+                    { size: [frameThickness, frameThickness, cockpitLength], pos: [-cockpitWidth/2, centerY - cockpitHeight/2, centerZ] },
+                    // Right edge
+                    { size: [frameThickness, frameThickness, cockpitLength], pos: [cockpitWidth/2, centerY - cockpitHeight/2, centerZ] }
+                ];
+                
+                // Side frame edges (vertical)
+                const sideFrames = [
+                    // Left side edges
+                    { size: [frameThickness, cockpitHeight, frameThickness], pos: [-cockpitWidth/2, centerY, centerZ + cockpitLength/2] },
+                    { size: [frameThickness, cockpitHeight, frameThickness], pos: [-cockpitWidth/2, centerY, centerZ - cockpitLength/2] },
+                    // Right side edges  
+                    { size: [frameThickness, cockpitHeight, frameThickness], pos: [cockpitWidth/2, centerY, centerZ + cockpitLength/2] },
+                    { size: [frameThickness, cockpitHeight, frameThickness], pos: [cockpitWidth/2, centerY, centerZ - cockpitLength/2] }
+                ];
+                
+                // Create all frame pieces
+                [...bottomFrames, ...sideFrames].forEach((frame, index) => {
+                    const frameGeometry = new THREE.BoxGeometry(...frame.size);
+                    const frameMesh = new THREE.Mesh(frameGeometry, frameMaterial);
+                    frameMesh.position.set(...frame.pos);
+                    frameMesh.name = `cockpit_frame_${index}`;
+                    cockpitGroup.add(frameMesh);
+                });
+                
+                // Add seat base with realistic ejection seat material
+                const seatGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
+                const seatMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x2d1b15,      // Dark brown leather
+                    roughness: 0.7,       // Leather texture
+                    metalness: 0.0,       // No metallic for leather
+                    envMapIntensity: 0.3  // Subtle reflection
+                });
+                const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+                seat.position.set(0, 0.2, 0.3);
+                seat.name = 'seat_base';
+                cockpitGroup.add(seat);
+                
+                // Add anti-slip rubber floor with realistic material
+                const floorGeometry = new THREE.BoxGeometry(cockpitWidth, 0.05, cockpitLength);
+                const floorMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a1a1a,      // Dark charcoal
+                    roughness: 0.95,      // Very rough rubber
+                    metalness: 0.0,       // No metallic for rubber
+                    envMapIntensity: 0.1  // Minimal reflection
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.position.set(0, centerY - cockpitHeight/2 - 0.05, centerZ);
+                floor.name = 'cockpit_floor';
+                cockpitGroup.add(floor);
+                
+                // Add transparent canopy glass for realistic fighter jet cockpit
+                this.addCanopyGlass(cockpitGroup);
+                
+                console.log('✅ Created hollow cockpit frame with transparent canopy - you can see the sky!');
+            }
+
+            addDetailedCockpitComponents(cockpitGroup) {
+                // Add detailed switches, buttons, and components
+                console.log('🔧 Adding detailed cockpit components...');
+                
+                // Switch panel (left side)
+                const switchPanel = new THREE.Group();
+                for (let i = 0; i < 6; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        // Switch base
+                        const switchGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.02, 8);
+                        const switchMaterial = new THREE.MeshStandardMaterial({
+                            color: 0x333333,
+                            roughness: 0.2,
+                            metalness: 0.8,
+                            envMapIntensity: 1.0
+                        });
+                        const switchMesh = new THREE.Mesh(switchGeometry, switchMaterial);
+                        switchMesh.position.set(-0.45 + j * 0.04, 0.8 + i * 0.03, 0.85);
+                        switchMesh.name = `switch_${i}_${j}`;
+                        switchPanel.add(switchMesh);
+                        
+                        // Switch tip (colored)
+                        const tipGeometry = new THREE.SphereGeometry(0.008, 8, 8);
+                        const tipMaterial = new THREE.MeshStandardMaterial({
+                            color: i % 2 === 0 ? 0xff4444 : 0x44ff44, // Alternate red/green
+                            emissive: i % 2 === 0 ? 0x220000 : 0x002200,
+                            emissiveIntensity: 0.3,
+                            roughness: 0.1,
+                            metalness: 0.0
+                        });
+                        const tipMesh = new THREE.Mesh(tipGeometry, tipMaterial);
+                        tipMesh.position.set(-0.45 + j * 0.04, 0.81 + i * 0.03, 0.85);
+                        switchPanel.add(tipMesh);
+                    }
+                }
+                cockpitGroup.add(switchPanel);
+                
+                // Warning lights panel (right side)
+                const warningPanel = new THREE.Group();
+                const warnings = [
+                    { text: 'ENGINE', color: 0xff4444 },
+                    { text: 'FUEL', color: 0xffaa00 },
+                    { text: 'HYDRAUL', color: 0xff4444 },
+                    { text: 'ELEC', color: 0xffaa00 },
+                    { text: 'GEAR', color: 0x44ff44 },
+                    { text: 'FLAPS', color: 0x44ff44 }
+                ];
+                
+                warnings.forEach((warning, index) => {
+                    // Warning light
+                    const lightGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 8);
+                    const lightMaterial = new THREE.MeshStandardMaterial({
+                        color: warning.color,
+                        emissive: warning.color,
+                        emissiveIntensity: 0.2,
+                        roughness: 0.1,
+                        metalness: 0.0
+                    });
+                    const lightMesh = new THREE.Mesh(lightGeometry, lightMaterial);
+                    lightMesh.position.set(0.4, 1.1 - index * 0.05, 0.87);
+                    lightMesh.name = `warning_${index}`;
+                    warningPanel.add(lightMesh);
+                });
+                cockpitGroup.add(warningPanel);
+                
+                // Oxygen system (left console)
+                const oxygenGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.1, 8);
+                const oxygenMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x228833,
+                    roughness: 0.4,
+                    metalness: 0.7,
+                    envMapIntensity: 1.0
+                });
+                const oxygen = new THREE.Mesh(oxygenGeometry, oxygenMaterial);
+                oxygen.position.set(-0.5, 0.4, 0.6);
+                oxygen.name = 'oxygen_regulator';
+                cockpitGroup.add(oxygen);
+                
+                // Ejection seat handles
+                const handleGeometry = new THREE.BoxGeometry(0.02, 0.15, 0.02);
+                const handleMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffff00,      // Bright yellow (safety color)
+                    roughness: 0.3,
+                    metalness: 0.1,
+                    envMapIntensity: 0.5
+                });
+                
+                // Left ejection handle
+                const leftHandle = new THREE.Mesh(handleGeometry, handleMaterial);
+                leftHandle.position.set(-0.2, 0.5, 0.25);
+                leftHandle.name = 'left_ejection_handle';
+                cockpitGroup.add(leftHandle);
+                
+                // Right ejection handle
+                const rightHandle = new THREE.Mesh(handleGeometry, handleMaterial);
+                rightHandle.position.set(0.2, 0.5, 0.25);
+                rightHandle.name = 'right_ejection_handle';
+                cockpitGroup.add(rightHandle);
+                
+                console.log('✅ Detailed cockpit components added');
+            }
+
+            addCockpitDisplays(cockpitGroup) {
+                // Add glowing instrument displays
+                console.log('📱 Adding cockpit displays...');
+                
+                // Main flight display (MFD)
+                const mfdGeometry = new THREE.PlaneGeometry(0.3, 0.2);
+                const mfdMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x00ff00,      // Green glow
+                    emissive: 0x004400,   // Emissive green
+                    emissiveIntensity: 0.5,
+                    roughness: 0.1,
+                    metalness: 0.0
+                });
+                const mfd = new THREE.Mesh(mfdGeometry, mfdMaterial);
+                mfd.position.set(-0.25, 1.0, 0.96);
+                mfd.rotation.x = -0.15;
+                mfd.name = 'main_display';
+                cockpitGroup.add(mfd);
+                
+                // Navigation display
+                const navGeometry = new THREE.PlaneGeometry(0.25, 0.15);
+                const navMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0088ff,      // Blue glow
+                    emissive: 0x002244,   // Emissive blue
+                    emissiveIntensity: 0.4,
+                    roughness: 0.1,
+                    metalness: 0.0
+                });
+                const nav = new THREE.Mesh(navGeometry, navMaterial);
+                nav.position.set(0.25, 1.0, 0.96);
+                nav.rotation.x = -0.15;
+                nav.name = 'nav_display';
+                cockpitGroup.add(nav);
+                
+                // HUD glass (heads-up display)
+                const hudGeometry = new THREE.PlaneGeometry(0.4, 0.3);
+                const hudMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x00ff88,      // Green HUD
+                    emissive: 0x002200,   // Subtle glow
+                    emissiveIntensity: 0.2,
+                    transparent: true,
+                    opacity: 0.3,
+                    roughness: 0.0,
+                    metalness: 0.0
+                });
+                const hud = new THREE.Mesh(hudGeometry, hudMaterial);
+                hud.position.set(0, 1.2, 1.2);
+                hud.rotation.x = -0.3;
+                hud.name = 'hud_display';
+                cockpitGroup.add(hud);
+                
+                console.log('✅ Cockpit displays added');
+            }
+            
+            addCockpitLighting(cockpitGroup) {
+                // Add cockpit interior lighting
+                console.log('💡 Adding cockpit interior lighting...');
+                
+                // Instrument panel red lighting (night vision friendly)
+                const panelLight = new THREE.PointLight(0xff4444, 0.5, 2);
+                panelLight.position.set(0, 0.8, 0.9);
+                panelLight.name = 'panel_light';
+                cockpitGroup.add(panelLight);
+                
+                // Console side lights
+                const leftConsoleLight = new THREE.PointLight(0x4444ff, 0.3, 1.5);
+                leftConsoleLight.position.set(-0.4, 0.6, 0.7);
+                leftConsoleLight.name = 'left_console_light';
+                cockpitGroup.add(leftConsoleLight);
+                
+                const rightConsoleLight = new THREE.PointLight(0x4444ff, 0.3, 1.5);
+                rightConsoleLight.position.set(0.4, 0.6, 0.7);
+                rightConsoleLight.name = 'right_console_light';
+                cockpitGroup.add(rightConsoleLight);
+                
+                // Emergency lighting (dim red)
+                const emergencyLight = new THREE.PointLight(0xff2222, 0.2, 3);
+                emergencyLight.position.set(0, 1.3, 0.5);
+                emergencyLight.name = 'emergency_light';
+                cockpitGroup.add(emergencyLight);
+                
+                console.log('✅ Cockpit lighting added');
+            }
+
+            addCanopyGlass(cockpitGroup) {
+                // Create realistic fighter jet canopy glass panels
+                console.log('🪟 Adding transparent canopy glass...');
+                
+                // Transparent canopy material
+                const canopyMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.15,
+                    roughness: 0.0,
+                    metalness: 0.0,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.0,
+                    transmission: 0.9,
+                    ior: 1.5,
+                    thickness: 0.01,
+                    side: THREE.DoubleSide
+                });
+                
+                const cockpitWidth = 1.2;
+                const cockpitLength = 2.0;
+                const cockpitHeight = 1.4;
+                const centerY = 0.5;
+                const centerZ = 0.7;
+                
+                // Forward windscreen (main viewing area)
+                const windscreenGeometry = new THREE.PlaneGeometry(cockpitWidth * 0.8, cockpitHeight * 0.7);
+                const windscreen = new THREE.Mesh(windscreenGeometry, canopyMaterial);
+                windscreen.position.set(0, centerY + 0.2, centerZ + cockpitLength/2 - 0.1);
+                windscreen.rotation.x = -0.2; // Slight angle like real fighter jet
+                windscreen.name = 'forward_windscreen';
+                cockpitGroup.add(windscreen);
+                
+                // Left side window
+                const leftWindowGeometry = new THREE.PlaneGeometry(cockpitLength * 0.6, cockpitHeight * 0.6);
+                const leftWindow = new THREE.Mesh(leftWindowGeometry, canopyMaterial);
+                leftWindow.position.set(-cockpitWidth/2 + 0.05, centerY + 0.1, centerZ);
+                leftWindow.rotation.y = Math.PI/2;
+                leftWindow.rotation.z = 0.1; // Slight outward angle
+                leftWindow.name = 'left_side_window';
+                cockpitGroup.add(leftWindow);
+                
+                // Right side window  
+                const rightWindowGeometry = new THREE.PlaneGeometry(cockpitLength * 0.6, cockpitHeight * 0.6);
+                const rightWindow = new THREE.Mesh(rightWindowGeometry, canopyMaterial);
+                rightWindow.position.set(cockpitWidth/2 - 0.05, centerY + 0.1, centerZ);
+                rightWindow.rotation.y = -Math.PI/2;
+                rightWindow.rotation.z = -0.1; // Slight outward angle
+                rightWindow.name = 'right_side_window';
+                cockpitGroup.add(rightWindow);
+                
+                // Top canopy (overhead transparency)
+                const topCanopyGeometry = new THREE.PlaneGeometry(cockpitWidth * 0.9, cockpitLength * 0.8);
+                const topCanopy = new THREE.Mesh(topCanopyGeometry, canopyMaterial);
+                topCanopy.position.set(0, centerY + cockpitHeight/2 - 0.1, centerZ);
+                topCanopy.rotation.x = Math.PI/2;
+                topCanopy.name = 'top_canopy';
+                cockpitGroup.add(topCanopy);
+                
+                // Rear window (smaller)
+                const rearWindowGeometry = new THREE.PlaneGeometry(cockpitWidth * 0.6, cockpitHeight * 0.4);
+                const rearWindow = new THREE.Mesh(rearWindowGeometry, canopyMaterial);
+                rearWindow.position.set(0, centerY + 0.1, centerZ - cockpitLength/2 + 0.1);
+                rearWindow.rotation.x = 0.3; // Angled back
+                rearWindow.name = 'rear_window';
+                cockpitGroup.add(rearWindow);
+                
+                console.log('✅ Added 5 transparent canopy glass panels');
+            }
+
+            createPlaceholderCockpit() {
+                console.log('🔧 Creating hollow placeholder cockpit...');
+                
+                // Create basic cockpit structure
+                const cockpitGroup = new THREE.Group();
+                cockpitGroup.name = 'placeholder_cockpit';
+                
+                // Create hollow cockpit frame instead of solid tub
+                this.createHollowCockpitFrame(cockpitGroup);
+                
+                // Control stick with grip texture
+                const stickGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8);
+                const stickMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x2a2a2a,      // Dark grip material
+                    roughness: 0.8,       // Textured grip
+                    metalness: 0.1,       // Minimal metallic
+                    envMapIntensity: 0.2  // Subtle reflection
+                });
+                const controlStick = new THREE.Mesh(stickGeometry, stickMaterial);
+                controlStick.position.set(0.15, 0.4, 0.65);
+                controlStick.name = 'placeholder_stick';
+                cockpitGroup.add(controlStick);
+                
+                // Throttle with military metal finish
+                const throttleGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+                const throttleMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x4a5568,      // Military blue-gray
+                    roughness: 0.4,       // Polished metal
+                    metalness: 0.8,       // Metallic finish
+                    envMapIntensity: 1.0  // Good reflection
+                });
+                const throttle = new THREE.Mesh(throttleGeometry, throttleMaterial);
+                throttle.position.set(-0.35, 0.2, 0.75);
+                throttle.name = 'placeholder_throttle';
+                cockpitGroup.add(throttle);
+                
+                // Instrument panel with display screens
+                const panelGeometry = new THREE.BoxGeometry(1.0, 0.2, 0.5);
+                const panelMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a1a1a,      // Matte black instrument panel
+                    roughness: 0.95,      // Very matte finish
+                    metalness: 0.1
+                });
+                const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+                panel.position.set(0, 1.0, 0.95);
+                panel.rotation.x = -0.15;
+                panel.name = 'placeholder_panel';
+                cockpitGroup.add(panel);
+                
+                // Add detailed cockpit components
+                this.addDetailedCockpitComponents(cockpitGroup);
+                
+                // Add glowing displays
+                this.addCockpitDisplays(cockpitGroup);
+                
+                // Add cockpit interior lighting
+                this.addCockpitLighting(cockpitGroup);
+                
+                // Add to scene
+                this.scene.add(cockpitGroup);
+                
+                // Store as loaded asset
+                const placeholderAsset = {
+                    scene: cockpitGroup,
+                    animations: [],
+                    materials: new Set([cockpitMaterial, stickMaterial, throttleMaterial, panelMaterial]),
+                    meshes: [cockpitTub, controlStick, throttle, panel],
+                    triangles: 48, // Approximate for basic shapes
+                    priority: 'placeholder'
+                };
+                
+                this.loadedAssets.set('placeholder_cockpit', {
+                    [this.currentQuality]: placeholderAsset
+                });
+                
+                console.log('✅ Placeholder cockpit created');
+                
+                // Update stats
+                this.updatePerformanceStats();
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize the production cockpit viewer
+        window.addEventListener('DOMContentLoaded', () => {
+            new ProductionCockpitViewer();
+        });
+
+        // Global error handling
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+    </script>
+</body>
+</html>
