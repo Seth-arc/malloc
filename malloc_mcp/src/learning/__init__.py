@@ -20,6 +20,7 @@ from .knowledge_model import KnowledgeModelProcessor, KnowledgeStructureData, Bl
 from .engagement_model import EngagementModelProcessor, VRInteractionData, AttentionMetrics
 from .assessment_model import AssessmentModelProcessor, AssessmentConfiguration, AssessmentResponse, AssessmentType, CompetencyLevel
 from .transition_model import TransitionModelProcessor, TransitionConfiguration, LearningStateData, TransitionType, LearningState
+from .integration_engine import LearningIntegrationEngine, LearningModelInputs, IntegrationResult
 
 __all__ = [
     # Learner Model
@@ -48,18 +49,27 @@ __all__ = [
     'TransitionConfiguration',
     'LearningStateData',
     'TransitionType',
-    'LearningState'
+    'LearningState',
+    
+    # Integration Engine
+    'LearningIntegrationEngine',
+    'LearningModelInputs',
+    'IntegrationResult'
 ]
 
 # Package version
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 # Educational metadata
 EDUCATIONAL_METADATA = {
     "learning_equation": "∂(t+1) = ∂(t) + α · Δ(∩(t), ∆(t), E(t), A(t)) + β · ε(t)",
     "model_count": 5,
+    "integration_engine": True,
+    "real_time_computation": True,
     "mathematical_foundation": "adaptive_learning_theory",
     "spatial_precision": "0.1mm",
     "quest3_optimized": True,
-    "ferpa_compliant": True
+    "ferpa_compliant": True,
+    "computation_target": "<10ms",
+    "phase": "3_real_time_integration"
 }
